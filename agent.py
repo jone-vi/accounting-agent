@@ -36,6 +36,9 @@ Always understand the task regardless of language.
 - For employee admin roles: set userType=EXTENDED when creating, then use grant_entitlements_by_template with ALL_PRIVILEGES
 - grant_entitlement_template is for giving employees access to a CLIENT company (accountant firms) — rarely needed
 - For company's own customer ID (needed for grant_entitlement_template): use get_company_info
+- For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type. Bonus/tillegg is a separate specification line.
+- For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry
+- For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
 
 ## Task completion
 When all required actions are done, stop. Do not add unnecessary verification calls."""
@@ -235,6 +238,63 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
 
             case "list_accounts":
                 result = client.list_accounts(**tool_input)
+
+            # ── Salary / Payroll ────────────────────────────────────────────
+            case "list_salary_types":
+                result = client.list_salary_types(**tool_input)
+
+            case "create_salary_transaction":
+                year = tool_input["year"]
+                month = tool_input["month"]
+                payslips_raw = tool_input["payslips"]
+                payslips = []
+                for ps in payslips_raw:
+                    specs = []
+                    for s in ps.get("specifications", []):
+                        spec = {
+                            "salaryType": {"id": s["salary_type_id"]},
+                            "rate": s["rate"],
+                            "count": s["count"],
+                        }
+                        if "description" in s:
+                            spec["description"] = s["description"]
+                        specs.append(spec)
+                    payslips.append({
+                        "employee": {"id": ps["employee_id"]},
+                        "specifications": specs,
+                    })
+                result = client.create_salary_transaction({
+                    "year": year,
+                    "month": month,
+                    "payslips": payslips,
+                })
+
+            case "list_payslips":
+                result = client.list_payslips(**tool_input)
+
+            # ── Suppliers ───────────────────────────────────────────────────
+            case "list_suppliers":
+                result = client.list_suppliers(**tool_input)
+
+            case "create_supplier":
+                result = client.create_supplier(tool_input)
+
+            # ── Timesheet / Activities ───────────────────────────────────────
+            case "list_activities":
+                result = client.list_activities(**tool_input)
+
+            case "create_timesheet_entry":
+                employee_id = tool_input.pop("employee_id")
+                activity_id = tool_input.pop("activity_id")
+                project_id = tool_input.pop("project_id", None)
+                payload = {
+                    "employee": {"id": employee_id},
+                    "activity": {"id": activity_id},
+                    **tool_input,
+                }
+                if project_id:
+                    payload["project"] = {"id": project_id}
+                result = client.create_timesheet_entry(payload)
 
             # ── Company / Modules ───────────────────────────────────────────
             case "get_company_info":

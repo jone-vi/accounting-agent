@@ -70,11 +70,13 @@ Basic Auth: username `"0"`, password = `session_token`. Set per request, comes f
 
 ---
 
-## Tool Coverage (36 tools)
+## Tool Coverage (43 tools)
 
 **Employees:** `list_employees`, `create_employee`, `update_employee`, `create_employment`, `grant_entitlements_by_template`, `grant_entitlement_template`
 
 **Customers:** `list_customers`, `create_customer`, `update_customer`
+
+**Suppliers:** `list_suppliers`, `create_supplier`
 
 **Products:** `list_products`, `create_product`
 
@@ -85,6 +87,10 @@ Basic Auth: username `"0"`, password = `session_token`. Set per request, comes f
 **Departments:** `list_departments`, `create_department`
 
 **Travel Expenses:** `list_travel_expenses`, `create_travel_expense`, `add_travel_cost`, `add_mileage_allowance`, `add_per_diem_compensation`, `deliver_travel_expense`, `delete_travel_expense`
+
+**Salary/Payroll:** `list_salary_types`, `create_salary_transaction`, `list_payslips`
+
+**Timesheet:** `list_activities`, `create_timesheet_entry`
 
 **Vouchers/Ledger:** `list_vouchers`, `create_voucher`, `reverse_voucher`, `list_accounts`
 

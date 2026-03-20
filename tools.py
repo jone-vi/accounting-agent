@@ -614,6 +614,152 @@ TOOLS = [
         },
     },
 
+    # ── Salary / Payroll ───────────────────────────────────────────────────
+    {
+        "name": "list_salary_types",
+        "description": (
+            "List available salary/wage types (lønnarter). Use to find the salary type ID "
+            "for base salary, bonus, overtime, holiday pay, etc. before creating a salary transaction. "
+            "Filter by name to find the right type (e.g. 'fastlønn', 'bonus', 'overtid')."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Filter by salary type name"},
+                "number": {"type": "string", "description": "Filter by wage code number"},
+            },
+        },
+    },
+    {
+        "name": "create_salary_transaction",
+        "description": (
+            "Run payroll for one or more employees (create a salary transaction). "
+            "Requires year, month, and at least one payslip with salary specifications. "
+            "Each specification needs a salary_type_id (from list_salary_types), rate (amount per unit), "
+            "and count (number of units, typically 1 for monthly salary). "
+            "Use for tasks like 'kjør lønn', 'exécutez la paie', 'run payroll', 'process salary'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "year": {"type": "integer", "description": "Payroll year, e.g. 2026"},
+                "month": {"type": "integer", "description": "Payroll month (1-12)"},
+                "payslips": {
+                    "type": "array",
+                    "description": "One entry per employee",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "employee_id": {"type": "integer"},
+                            "specifications": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "salary_type_id": {"type": "integer", "description": "ID from list_salary_types"},
+                                        "rate": {"type": "number", "description": "Amount per unit (e.g. monthly salary amount)"},
+                                        "count": {"type": "number", "description": "Number of units, typically 1"},
+                                        "description": {"type": "string", "description": "Line description"},
+                                    },
+                                    "required": ["salary_type_id", "rate", "count"],
+                                },
+                            },
+                        },
+                        "required": ["employee_id", "specifications"],
+                    },
+                },
+            },
+            "required": ["year", "month", "payslips"],
+        },
+    },
+    {
+        "name": "list_payslips",
+        "description": "List existing payslips for an employee. Use to check if payroll has already been run.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "employeeId": {"type": "integer"},
+                "yearFrom": {"type": "integer"},
+                "yearTo": {"type": "integer"},
+                "monthFrom": {"type": "integer"},
+                "monthTo": {"type": "integer"},
+            },
+        },
+    },
+
+    # ── Suppliers ──────────────────────────────────────────────────────────
+    {
+        "name": "list_suppliers",
+        "description": "Search suppliers by name. Use to find supplier ID or check for duplicates before creating.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Supplier name filter (partial match not supported — use exact or leave empty to list all)"},
+            },
+        },
+    },
+    {
+        "name": "create_supplier",
+        "description": "Create a new supplier. Only name is required.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "organizationNumber": {"type": "string"},
+                "email": {"type": "string"},
+                "invoiceEmail": {"type": "string"},
+                "phoneNumber": {"type": "string"},
+                "isPrivateIndividual": {"type": "boolean"},
+                "postalAddress": {
+                    "type": "object",
+                    "properties": {
+                        "addressLine1": {"type": "string"},
+                        "postalCode": {"type": "string"},
+                        "city": {"type": "string"},
+                    },
+                },
+            },
+            "required": ["name"],
+        },
+    },
+
+    # ── Timesheet / Activities ─────────────────────────────────────────────
+    {
+        "name": "list_activities",
+        "description": (
+            "List available activities (aktiviteter) for timesheet entries. "
+            "Returns id, name, number, and type. Use to find activity_id before creating timesheet entries. "
+            "General activities (isGeneral=true) can be used on any project."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Filter by activity name"},
+                "projectId": {"type": "integer", "description": "Filter activities available for a specific project"},
+            },
+        },
+    },
+    {
+        "name": "create_timesheet_entry",
+        "description": (
+            "Log hours for an employee on a project/activity (timesheet). "
+            "employee_id, activity_id, date, and hours are required. "
+            "Use list_activities to find activity_id first."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "employee_id": {"type": "integer"},
+                "activity_id": {"type": "integer", "description": "Required. Get from list_activities."},
+                "project_id": {"type": "integer", "description": "Project to log hours against (optional for general activities)"},
+                "date": {"type": "string", "description": "YYYY-MM-DD"},
+                "hours": {"type": "number", "description": "Number of hours worked"},
+                "comment": {"type": "string"},
+            },
+            "required": ["employee_id", "activity_id", "date", "hours"],
+        },
+    },
+
     # ── Company / Modules ──────────────────────────────────────────────────
     {
         "name": "get_company_info",

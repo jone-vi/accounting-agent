@@ -221,6 +221,37 @@ class TripletexClient:
         data = self.get("/ledger/account", params={"fields": "id,number,name,type", **params})
         return data.get("values", [])
 
+    # ── Salary / Payroll ──────────────────────────────────────────────────────
+
+    def list_salary_types(self, **params) -> list[dict]:
+        data = self.get("/salary/type", params={"fields": "id,number,name,description,isTaxable,isPayrollTaxable", **params})
+        return data.get("values", [])
+
+    def create_salary_transaction(self, payload: dict) -> dict:
+        return self.post("/salary/transaction", payload)["value"]
+
+    def list_payslips(self, **params) -> list[dict]:
+        data = self.get("/salary/payslip", params={"fields": "id,employee,year,month,grossAmount,amount", **params})
+        return data.get("values", [])
+
+    # ── Suppliers ─────────────────────────────────────────────────────────────
+
+    def list_suppliers(self, **params) -> list[dict]:
+        data = self.get("/supplier", params={"fields": "id,name,email,organizationNumber,supplierNumber", **params})
+        return data.get("values", [])
+
+    def create_supplier(self, payload: dict) -> dict:
+        return self.post("/supplier", {"isSupplier": True, **payload})["value"]
+
+    # ── Timesheet / Activities ─────────────────────────────────────────────────
+
+    def list_activities(self, **params) -> list[dict]:
+        data = self.get("/activity", params={"fields": "id,name,number,activityType,isGeneral,isProjectActivity", **params})
+        return data.get("values", [])
+
+    def create_timesheet_entry(self, payload: dict) -> dict:
+        return self.post("/timesheet/entry", payload)["value"]
+
     # ── Company / Modules ─────────────────────────────────────────────────────
 
     def who_am_i(self) -> dict:
