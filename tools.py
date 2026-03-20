@@ -305,15 +305,16 @@ TOOLS = [
     # ── Invoices ───────────────────────────────────────────────────────────
     {
         "name": "list_invoices",
-        "description": "Search invoices. Use to find an invoice for payment or credit note.",
+        "description": "Search invoices. Use to find an invoice for payment or credit note. invoiceDateFrom and invoiceDateTo are REQUIRED — always provide them (e.g. '2025-01-01' to today).",
         "input_schema": {
             "type": "object",
             "properties": {
                 "customerId": {"type": "integer"},
-                "invoiceDateFrom": {"type": "string", "description": "YYYY-MM-DD"},
-                "invoiceDateTo": {"type": "string", "description": "YYYY-MM-DD"},
+                "invoiceDateFrom": {"type": "string", "description": "YYYY-MM-DD. Required."},
+                "invoiceDateTo": {"type": "string", "description": "YYYY-MM-DD. Required."},
                 "invoiceNumber": {"type": "integer"},
             },
+            "required": ["invoiceDateFrom", "invoiceDateTo"],
         },
     },
     {
@@ -353,13 +354,14 @@ TOOLS = [
     },
     {
         "name": "create_credit_note",
-        "description": "Create a credit note (reversal) for an existing invoice.",
+        "description": "Create a credit note (reversal) for an existing invoice. date is required (YYYY-MM-DD, use today's date).",
         "input_schema": {
             "type": "object",
             "properties": {
                 "invoice_id": {"type": "integer"},
+                "date": {"type": "string", "description": "Credit note date, YYYY-MM-DD. Required."},
             },
-            "required": ["invoice_id"],
+            "required": ["invoice_id", "date"],
         },
     },
 
@@ -543,15 +545,13 @@ TOOLS = [
     # ── Vouchers / Corrections ─────────────────────────────────────────────
     {
         "name": "list_vouchers",
-        "description": "Search ledger vouchers/journal entries. Use to find a voucher to reverse or correct.",
+        "description": "Search ledger vouchers/journal entries. Use to find a voucher to reverse or correct. dateTo is exclusive — set it to the day AFTER the last date you want (e.g. dateFrom='2026-03-01', dateTo='2026-03-02' to search March 1).",
         "input_schema": {
             "type": "object",
             "properties": {
-                "dateFrom": {"type": "string", "description": "YYYY-MM-DD"},
-                "dateTo": {"type": "string", "description": "YYYY-MM-DD"},
+                "dateFrom": {"type": "string", "description": "YYYY-MM-DD (inclusive)"},
+                "dateTo": {"type": "string", "description": "YYYY-MM-DD (exclusive — use day after last date wanted)"},
                 "number": {"type": "integer", "description": "Voucher number"},
-                "numberFrom": {"type": "integer"},
-                "numberTo": {"type": "integer"},
             },
         },
     },
@@ -602,13 +602,11 @@ TOOLS = [
     },
     {
         "name": "list_accounts",
-        "description": "List ledger accounts (chart of accounts). Use to find account IDs for voucher postings.",
+        "description": "List ledger accounts (chart of accounts). Use to find account IDs for voucher postings. Filter by number (exact match) or name.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "number": {"type": "integer", "description": "Account number (exact match)"},
-                "numberFrom": {"type": "integer"},
-                "numberTo": {"type": "integer"},
                 "name": {"type": "string"},
             },
         },

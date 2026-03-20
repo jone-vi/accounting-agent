@@ -159,8 +159,8 @@ class TripletexClient:
     def register_payment(self, invoice_id: int, payload: dict) -> dict:
         return self.put(f"/invoice/{invoice_id}/:payment", params=payload)
 
-    def create_credit_note(self, invoice_id: int) -> dict:
-        return self.put(f"/invoice/{invoice_id}/:createCreditNote").get("value", {})
+    def create_credit_note(self, invoice_id: int, date: str) -> dict:
+        return self.put(f"/invoice/{invoice_id}/:createCreditNote", params={"date": date}).get("value", {})
 
     # ── Projects ─────────────────────────────────────────────────────────────
 

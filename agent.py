@@ -143,7 +143,8 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
 
             case "create_credit_note":
                 invoice_id = tool_input.pop("invoice_id")
-                result = client.create_credit_note(invoice_id)
+                date = tool_input.pop("date")
+                result = client.create_credit_note(invoice_id, date)
 
             # ── Projects ────────────────────────────────────────────────────
             case "list_projects":
