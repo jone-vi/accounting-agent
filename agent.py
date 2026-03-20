@@ -30,43 +30,70 @@ Always understand the task regardless of language.
 ## Key rules
 - Minimise API calls — every unnecessary call reduces your score
 - Avoid 4xx errors — validate your understanding of required fields before calling
-- If a task says "create X for customer Y", first look up customer Y, then create X
-- Dates are always YYYY-MM-DD format
-- Today's date is {today}
+- If a task says "create X for customer Y", first look up customer Y (list_customers), then create X
+- Dates are always YYYY-MM-DD format. Today is {today}
+- For invoicing: use invoice_order (one call) instead of create_invoice (two calls)
+- For employee admin roles: set userType=EXTENDED when creating, then use grant_entitlements_by_template with ALL_PRIVILEGES
+- grant_entitlement_template is for giving employees access to a CLIENT company (accountant firms) — rarely needed
+- For company's own customer ID (needed for grant_entitlement_template): use get_company_info
 
 ## Task completion
 When all required actions are done, stop. Do not add unnecessary verification calls."""
 
 
 def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> str:
-    """Execute a tool call and return the result as a string."""
+    """Dispatch a tool call to the Tripletex client and return JSON result string."""
     try:
         match tool_name:
+
+            # ── Employees ───────────────────────────────────────────────────
             case "list_employees":
                 result = client.list_employees(**tool_input)
+
             case "create_employee":
                 result = client.create_employee(tool_input)
+
             case "update_employee":
                 employee_id = tool_input.pop("employee_id")
                 fields = tool_input.pop("fields")
-                # Fetch current employee first to get version, then merge
                 current = client.get_employee(employee_id)
                 current.update(fields)
                 result = client.update_employee(employee_id, current)
+
+            case "create_employment":
+                employee_id = tool_input.pop("employee_id")
+                payload = {"employee": {"id": employee_id}, **tool_input}
+                result = client.create_employment(payload)
+
+            case "grant_entitlement_template":
+                result = client.grant_entitlement_template(
+                    employee_id=tool_input["employee_id"],
+                    customer_id=tool_input["customer_id"],
+                    template=tool_input["template"],
+                )
+
+            # ── Customers ───────────────────────────────────────────────────
             case "list_customers":
                 result = client.list_customers(**tool_input)
+
             case "create_customer":
                 result = client.create_customer(tool_input)
+
             case "update_customer":
                 customer_id = tool_input.pop("customer_id")
                 fields = tool_input.pop("fields")
                 current = client.get_customer(customer_id)
                 current.update(fields)
                 result = client.update_customer(customer_id, current)
+
+            # ── Products ────────────────────────────────────────────────────
             case "list_products":
                 result = client.list_products(**tool_input)
+
             case "create_product":
                 result = client.create_product(tool_input)
+
+            # ── Orders ──────────────────────────────────────────────────────
             case "create_order":
                 customer_id = tool_input.pop("customer_id")
                 order_lines_raw = tool_input.pop("orderLines", [])
@@ -82,56 +109,151 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
                     **tool_input,
                 }
                 result = client.create_order(payload)
-            case "create_invoice":
+
+            case "invoice_order":
                 order_id = tool_input.pop("order_id")
-                payload = {
-                    "orders": [{"id": order_id}],
-                    **tool_input,
-                }
-                result = client.create_invoice(payload)
+                result = client.invoice_order(order_id, params=tool_input)
+
+            case "add_order_line":
+                order_id = tool_input.pop("order_id")
+                product_id = tool_input.pop("product_id", None)
+                payload = {"order": {"id": order_id}, **tool_input}
+                if product_id:
+                    payload["product"] = {"id": product_id}
+                result = client.add_order_line(payload)
+
+            # ── Invoices ────────────────────────────────────────────────────
             case "list_invoices":
                 result = client.list_invoices(**tool_input)
+
+            case "send_invoice":
+                invoice_id = tool_input.pop("invoice_id")
+                send_type = tool_input.pop("sendType")
+                override_email = tool_input.pop("overrideEmailAddress", None)
+                result = client.send_invoice(invoice_id, send_type, override_email)
+
             case "register_payment":
                 invoice_id = tool_input.pop("invoice_id")
                 payment_type_id = tool_input.pop("paymentTypeId", 1)
-                payload = {
-                    "paymentTypeId": payment_type_id,
-                    **tool_input,
-                }
+                payload = {"paymentTypeId": payment_type_id, **tool_input}
                 result = client.register_payment(invoice_id, payload)
+
             case "create_credit_note":
                 invoice_id = tool_input.pop("invoice_id")
                 result = client.create_credit_note(invoice_id)
+
+            # ── Projects ────────────────────────────────────────────────────
             case "list_projects":
                 result = client.list_projects(**tool_input)
+
             case "create_project":
                 customer_id = tool_input.pop("customer_id", None)
+                manager_id = tool_input.pop("projectManager_id", None)
                 payload = {**tool_input}
                 if customer_id:
                     payload["customer"] = {"id": customer_id}
+                if manager_id:
+                    payload["projectManager"] = {"id": manager_id}
                 result = client.create_project(payload)
+
+            case "add_project_participant":
+                project_id = tool_input.pop("project_id")
+                employee_id = tool_input.pop("employee_id")
+                payload = {
+                    "project": {"id": project_id},
+                    "employee": {"id": employee_id},
+                    **tool_input,
+                }
+                result = client.add_project_participant(payload)
+
+            # ── Departments ─────────────────────────────────────────────────
             case "list_departments":
                 result = client.list_departments()
+
             case "create_department":
-                result = client.create_department(tool_input)
+                manager_id = tool_input.pop("departmentManager", {}).get("id") if isinstance(tool_input.get("departmentManager"), dict) else None
+                payload = {k: v for k, v in tool_input.items() if k != "departmentManager"}
+                if manager_id:
+                    payload["departmentManager"] = {"id": manager_id}
+                result = client.create_department(payload)
+
+            # ── Travel Expenses ─────────────────────────────────────────────
             case "list_travel_expenses":
                 result = client.list_travel_expenses(**tool_input)
+
             case "create_travel_expense":
                 employee_id = tool_input.pop("employee_id")
+                project_id = tool_input.pop("project_id", None)
                 payload = {"employee": {"id": employee_id}, **tool_input}
+                if project_id:
+                    payload["project"] = {"id": project_id}
                 result = client.create_travel_expense(payload)
+
+            case "add_travel_cost":
+                expense_id = tool_input.pop("travel_expense_id")
+                payload = {"travelExpense": {"id": expense_id}, **tool_input}
+                result = client.add_travel_cost(payload)
+
+            case "add_mileage_allowance":
+                expense_id = tool_input.pop("travel_expense_id")
+                payload = {"travelExpense": {"id": expense_id}, **tool_input}
+                result = client.add_mileage_allowance(payload)
+
+            case "add_per_diem_compensation":
+                expense_id = tool_input.pop("travel_expense_id")
+                payload = {"travelExpense": {"id": expense_id}, **tool_input}
+                result = client.add_per_diem_compensation(payload)
+
+            case "deliver_travel_expense":
+                result = client.deliver_travel_expense(tool_input["travel_expense_id"])
+
             case "delete_travel_expense":
-                expense_id = tool_input.pop("expense_id")
-                client.delete_travel_expense(expense_id)
-                result = {"deleted": True, "id": expense_id}
+                client.delete_travel_expense(tool_input["travel_expense_id"])
+                result = {"deleted": True, "id": tool_input["travel_expense_id"]}
+
+            # ── Vouchers / Corrections ──────────────────────────────────────
+            case "list_vouchers":
+                result = client.list_vouchers(**tool_input)
+
+            case "create_voucher":
+                postings_raw = tool_input.pop("postings", [])
+                postings = []
+                for p in postings_raw:
+                    posting = {"date": p["date"], "amount": p["amount"]}
+                    posting["account"] = {"id": p["account_id"]}
+                    for fk, fv in [("customer_id", "customer"), ("employee_id", "employee"), ("project_id", "project")]:
+                        if fk in p:
+                            posting[fv] = {"id": p[fk]}
+                    if "description" in p:
+                        posting["description"] = p["description"]
+                    postings.append(posting)
+                payload = {"postings": postings, **tool_input}
+                result = client.create_voucher(payload)
+
+            case "reverse_voucher":
+                result = client.reverse_voucher(tool_input["voucher_id"], tool_input["date"])
+
+            case "list_accounts":
+                result = client.list_accounts(**tool_input)
+
+            # ── Company / Modules ───────────────────────────────────────────
+            case "get_company_info":
+                result = client.who_am_i()
+
+            case "grant_entitlements_by_template":
+                result = client.grant_entitlements_by_template(
+                    employee_id=tool_input["employee_id"],
+                    template=tool_input["template"],
+                )
+
             case "enable_module":
-                module_name = tool_input["module_name"]
-                client.enable_module(module_name)
-                result = {"enabled": True, "module": module_name}
+                client.enable_module(tool_input["module_name"])
+                result = {"enabled": True, "module": tool_input["module_name"]}
+
             case _:
                 return f"Error: Unknown tool '{tool_name}'"
 
-        return json.dumps(result, ensure_ascii=False)
+        return json.dumps(result, ensure_ascii=False, default=str)
 
     except Exception as e:
         logger.warning("Tool %s failed: %s", tool_name, e)
@@ -142,35 +264,24 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
     """Run the agent loop until the task is complete."""
     claude = anthropic.Anthropic()
 
-    # Build user message — include file info if present
     user_content: list = []
 
-    if file_contents:
-        for f in file_contents:
-            if f["media_type"] == "application/pdf":
-                user_content.append({
-                    "type": "document",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "application/pdf",
-                        "data": f["data"],
-                    },
-                    "title": f.get("filename", "attachment"),
-                })
-            elif f["media_type"].startswith("image/"):
-                user_content.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": f["media_type"],
-                        "data": f["data"],
-                    },
-                })
+    for f in file_contents:
+        if f["media_type"] == "application/pdf":
+            user_content.append({
+                "type": "document",
+                "source": {"type": "base64", "media_type": "application/pdf", "data": f["data"]},
+                "title": f.get("filename", "attachment"),
+            })
+        elif f["media_type"].startswith("image/"):
+            user_content.append({
+                "type": "image",
+                "source": {"type": "base64", "media_type": f["media_type"], "data": f["data"]},
+            })
 
     user_content.append({"type": "text", "text": prompt})
 
     messages = [{"role": "user", "content": user_content}]
-
     system = SYSTEM_PROMPT.format(today=date.today().isoformat())
 
     for iteration in range(MAX_ITERATIONS):
@@ -184,8 +295,6 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
         )
 
         logger.info("Iteration %d: stop_reason=%s, blocks=%d", iteration, response.stop_reason, len(response.content))
-
-        # Append assistant response to history
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason == "end_turn":
@@ -195,7 +304,6 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
             logger.warning("Unexpected stop_reason: %s", response.stop_reason)
             break
 
-        # Execute all tool calls
         tool_results = []
         for block in response.content:
             if block.type != "tool_use":

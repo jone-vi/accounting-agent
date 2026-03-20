@@ -1,5 +1,5 @@
-fastapi
-uvicorn[standard]
-httpx
-anthropic
-python-multipart
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+httpx==0.28.1
+anthropic==0.50.0
+python-multipart==0.0.20
