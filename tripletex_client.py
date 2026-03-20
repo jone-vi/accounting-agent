@@ -113,6 +113,8 @@ class TripletexClient:
         return data.get("values", [])
 
     def create_customer(self, payload: dict) -> dict:
+        if "postalAddress" in payload and "country" not in payload["postalAddress"]:
+            payload["postalAddress"]["country"] = {"id": 161}  # Norway
         return self.post("/customer", {"isCustomer": True, **payload})["value"]
 
     def get_customer(self, customer_id: int) -> dict:

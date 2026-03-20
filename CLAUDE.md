@@ -145,6 +145,25 @@ The sandbox persists across test runs. If an entity already exists (e.g. same em
 
 ---
 
+## Retrieving Cloud Run Logs
+
+```bash
+# Tail recent logs (excluding health checks)
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="accounting-agent"' \
+  --limit=200 --format="value(timestamp, textPayload)" --order=asc | grep -v "GET /health"
+
+# Logs for a specific time window (UTC)
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="accounting-agent" AND timestamp>="2026-03-20T21:10:00Z" AND timestamp<="2026-03-20T21:15:00Z"' \
+  --limit=500 --format="value(timestamp, textPayload)" --order=asc | grep -v "GET /health"
+
+# Filter to just agent actions and errors
+... | grep -E "(Received task|Calling tool|Result:|ERROR|error|failed|→ POST|→ PUT|→ GET|✓|✗)"
+```
+
+Note: UI timestamps are CET (UTC+1). Convert to UTC when filtering (`22:12 CET` → `21:12 UTC`).
+
+---
+
 ## Development Utilities
 
 ### Improve a failing tool
