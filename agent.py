@@ -146,7 +146,10 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
             case "register_payment":
                 invoice_id = tool_input.pop("invoice_id")
                 payment_type_id = tool_input.pop("paymentTypeId", 1)
+                amount = tool_input.pop("amount", None)
                 payload = {"paymentTypeId": payment_type_id, **tool_input}
+                if amount is not None:
+                    payload["paidAmount"] = amount
                 result = client.register_payment(invoice_id, payload)
 
             case "create_credit_note":
@@ -230,8 +233,8 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
             case "create_voucher":
                 postings_raw = tool_input.pop("postings", [])
                 postings = []
-                for p in postings_raw:
-                    posting = {"date": p["date"], "amount": p["amount"]}
+                for i, p in enumerate(postings_raw):
+                    posting = {"row": i + 1, "date": p["date"], "amount": p["amount"]}
                     posting["account"] = {"id": p["account_id"]}
                     for fk, fv in [("customer_id", "customer"), ("employee_id", "employee"), ("project_id", "project")]:
                         if fk in p:

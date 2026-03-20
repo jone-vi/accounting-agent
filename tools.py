@@ -338,7 +338,7 @@ TOOLS = [
         "name": "register_payment",
         "description": (
             "Register a payment against an invoice. "
-            "paymentDate and amount are required. "
+            "paymentDate and amount (full invoice amount) are required. "
             "paymentTypeId: use 1 for default bank payment if unknown."
         ),
         "input_schema": {
@@ -346,7 +346,7 @@ TOOLS = [
             "properties": {
                 "invoice_id": {"type": "integer"},
                 "paymentDate": {"type": "string", "description": "YYYY-MM-DD"},
-                "amount": {"type": "number", "description": "Amount paid"},
+                "amount": {"type": "number", "description": "Amount paid (maps to paidAmount in the API)"},
                 "paymentTypeId": {"type": "integer", "description": "Payment type ID. Default: 1"},
             },
             "required": ["invoice_id", "paymentDate", "amount"],
