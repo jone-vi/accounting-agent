@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Tripletex Accounting Agent")
 
 
+@app.post("/")
 @app.post("/solve")
 async def solve(request: Request):
     body = await request.json()
