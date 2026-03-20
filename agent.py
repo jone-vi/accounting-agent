@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 MODEL = "claude-opus-4-6"
 MAX_TOKENS = 4096
-MAX_ITERATIONS = 20  # Safety cap — prevents runaway loops
+MAX_ITERATIONS = 12  # Safety cap — prevents runaway loops
+MAX_CONSECUTIVE_ERRORS = 3  # Give up if this many tool calls in a row all fail
 
 SYSTEM_PROMPT = """You are an expert accounting assistant that completes tasks in Tripletex (a Norwegian accounting system).
 
@@ -345,6 +346,8 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
     messages = [{"role": "user", "content": user_content}]
     system = SYSTEM_PROMPT.format(today=date.today().isoformat())
 
+    consecutive_errors = 0
+
     for iteration in range(MAX_ITERATIONS):
         response = claude.messages.create(
             model=MODEL,
@@ -366,17 +369,28 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
             break
 
         tool_results = []
+        iteration_had_error = False
         for block in response.content:
             if block.type != "tool_use":
                 continue
             logger.info("Calling tool: %s(%s)", block.name, json.dumps(block.input)[:200])
             result = execute_tool(tripletex_client, block.name, dict(block.input))
             logger.info("Result: %s", result[:300])
+            if result.startswith("Error:"):
+                iteration_had_error = True
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
                 "content": result,
             })
+
+        if iteration_had_error:
+            consecutive_errors += 1
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                logger.warning("Giving up after %d consecutive error iterations", consecutive_errors)
+                break
+        else:
+            consecutive_errors = 0
 
         messages.append({"role": "user", "content": tool_results})
 
