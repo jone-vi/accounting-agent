@@ -1,5 +1,6 @@
 """FastAPI server — exposes the /solve endpoint for the NM i AI Tripletex challenge."""
 
+import asyncio
 import base64
 import logging
 import os
@@ -56,7 +57,7 @@ async def solve(request: Request):
     client = TripletexClient(base_url=base_url, session_token=session_token)
 
     try:
-        run_agent(prompt=prompt, tripletex_client=client, file_contents=file_contents)
+        await asyncio.to_thread(run_agent, prompt=prompt, tripletex_client=client, file_contents=file_contents)
     except httpx.HTTPStatusError as e:
         logger.error("HTTP error during task: %s — %s", e.response.status_code, e.response.text)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=200)
