@@ -41,6 +41,13 @@ Always understand the task regardless of language.
 - For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry
 - For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
 
+## Handling errors
+If a tool returns an error:
+- Read the error message carefully — it usually states exactly what is wrong (missing field, wrong value, etc.)
+- Fix that specific issue and retry once
+- Do NOT retry with the same parameters, and do NOT try unrelated workarounds
+- If the error persists after one corrected attempt, stop — do not loop
+
 ## Task completion
 When all required actions are done, stop. Do not add unnecessary verification calls."""
 
