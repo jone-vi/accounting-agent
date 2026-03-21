@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from datetime import date
 
 import anthropic
@@ -463,14 +464,23 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
     consecutive_errors = 0
 
     for iteration in range(MAX_ITERATIONS):
-        response = claude.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            system=system,
-            tools=TOOLS,
-            messages=messages,
-            thinking={"type": "adaptive"},
-        )
+        for attempt in range(4):
+            try:
+                response = claude.messages.create(
+                    model=MODEL,
+                    max_tokens=MAX_TOKENS,
+                    system=system,
+                    tools=TOOLS,
+                    messages=messages,
+                    thinking={"type": "adaptive"},
+                )
+                break
+            except (anthropic.RateLimitError, anthropic.APIStatusError) as e:
+                if attempt == 3:
+                    raise
+                wait = 30 * (attempt + 1)
+                logger.warning("Anthropic API error (%s), retrying in %ds", e.__class__.__name__, wait)
+                time.sleep(wait)
 
         logger.info("Iteration %d: stop_reason=%s, blocks=%d", iteration, response.stop_reason, len(response.content))
         messages.append({"role": "assistant", "content": response.content})

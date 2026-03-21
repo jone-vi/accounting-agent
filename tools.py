@@ -393,7 +393,9 @@ TOOLS = [
         "name": "register_payment",
         "description": (
             "Register a payment against an invoice. "
-            "paymentDate and amount (full invoice amount) are required. "
+            "paymentDate, amount, and paymentTypeId are required. "
+            "IMPORTANT: always call list_invoices first and use the amountOutstanding field as the amount — "
+            "do NOT recalculate from the task description (e.g. adding VAT manually). "
             "paymentTypeId: use 1 for default bank payment if unknown."
         ),
         "input_schema": {
