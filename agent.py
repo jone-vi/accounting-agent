@@ -11,7 +11,7 @@ from tripletex_client import TripletexClient
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-opus-4-6"
+MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 8000
 MAX_ITERATIONS = 12  # Safety cap — prevents runaway loops
 MAX_CONSECUTIVE_ERRORS = 3  # Give up if this many tool calls in a row all fail

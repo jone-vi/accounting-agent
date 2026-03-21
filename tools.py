@@ -436,13 +436,13 @@ TOOLS = [
     {
         "name": "create_project",
         "description": (
-            "Create a project. name is required. "
+            "Create a project. name and projectManager_id are required — "
+            "the API returns 422 'Feltet Prosjektleder må fylles ut' if projectManager_id is omitted. "
+            "Use list_employees to find the employee ID before calling this tool. "
             "Link to a customer with customer_id. "
-            "Assign a project manager with projectManager_id (employee ID). "
-            "IMPORTANT: projectManager must have project manager privileges in Tripletex — "
+            "NOTE: projectManager must have project manager privileges in Tripletex — "
             "if the employee does not have PM access the API returns 422 "
-            "'prosjektleder har ikke fått tilgang som prosjektleder'. "
-            "If unsure whether an employee has PM access, omit projectManager_id."
+            "'prosjektleder har ikke fått tilgang som prosjektleder'."
         ),
         "input_schema": {
             "type": "object",
@@ -456,7 +456,7 @@ TOOLS = [
                 "endDate": {"type": "string", "description": "YYYY-MM-DD"},
                 "isInternal": {"type": "boolean", "description": "True for internal projects"},
             },
-            "required": ["name"],
+            "required": ["name", "projectManager_id"],
         },
     },
     {
