@@ -62,7 +62,7 @@ Do NOT wait for a separate turn before acting.
 - For update_employee with department change: pass department_id as a flat integer in the fields dict — it is auto-converted. Do NOT wrap it as {{"department": {{"id": ...}}}} yourself.
 - Do NOT call enable_module unless a prior tool call returned an explicit "module not enabled" error — all sandbox modules are pre-enabled. Calling it speculatively wastes iterations and returns errors.
 - For voucher postings to accounts payable (account 2400): MUST include supplier_id on that posting, otherwise API returns 422 "Leverandør mangler"
-- For create_order: if you include orderLines in the create_order call, do NOT call add_order_line separately for those same lines
+- For create_order: if you include orderLines in the create_order call, do NOT call add_order_line separately for those same lines. Using both creates duplicate lines on the order.
 
 ## Handling errors
 If a tool returns an error:
@@ -308,6 +308,18 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
 
             case "create_voucher":
                 postings_raw = tool_input.pop("postings", [])
+                # Pre-flight: catch missing supplier_id on account-2400 postings early
+                accounts_needing_supplier = {p["account_id"] for p in postings_raw if "supplier_id" not in p}
+                if accounts_needing_supplier:
+                    resolved = client.list_accounts(numberFrom=2400, numberTo=2400)
+                    ap_ids = {a["id"] for a in resolved if a.get("number") == 2400}
+                    missing = accounts_needing_supplier & ap_ids
+                    if missing:
+                        return (
+                            "Error: One or more postings use account 2400 (Leverandørgjeld) but are "
+                            "missing supplier_id. Add supplier_id to every posting that targets account 2400. "
+                            "Example posting: {\"account_id\": <2400_id>, \"supplier_id\": <supplier_id>, ...}"
+                        )
                 postings = []
                 for i, p in enumerate(postings_raw):
                     posting = {"row": i + 1, "date": p["date"], "amount": p["amount"]}

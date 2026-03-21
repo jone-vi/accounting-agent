@@ -287,15 +287,19 @@ class TripletexClient:
         number = params.pop("number", None)
         number_from = params.pop("numberFrom", None)
         number_to = params.pop("numberTo", None)
+        name = params.pop("name", None)
         data = self.get("/ledger/account", params={"fields": "id,number,name,type", **params})
         accounts = data.get("values", [])
         if number is not None:
             accounts = [a for a in accounts if a.get("number") == number]
-        elif number_from is not None or number_to is not None:
+        else:
             if number_from is not None:
                 accounts = [a for a in accounts if a.get("number", 0) >= number_from]
             if number_to is not None:
                 accounts = [a for a in accounts if a.get("number", 0) <= number_to]
+        if name is not None:
+            name_lower = name.lower()
+            accounts = [a for a in accounts if name_lower in (a.get("name") or "").lower()]
         return accounts
 
     # ── Salary / Payroll ──────────────────────────────────────────────────────

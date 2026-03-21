@@ -657,10 +657,11 @@ TOOLS = [
         "name": "create_voucher",
         "description": (
             "Create a manual ledger voucher (journal entry). "
-            "date and postings are required. Each posting needs account (id), "
+            "date and postings are required. Each posting needs account_id, "
             "amount (positive=debit, negative=credit), and date. "
-            "IMPORTANT: when posting to accounts payable (account 2400 / Leverandørgjeld), "
-            "you MUST include supplier_id on that posting or the API returns 422 'Leverandør mangler'."
+            "MANDATORY RULE: any posting to account 2400 (Leverandørgjeld / accounts payable) "
+            "MUST include supplier_id — without it the API always returns 422 'Leverandør mangler'. "
+            "If you have a supplier involved in the transaction, pass their supplier_id on the 2400 posting."
         ),
         "input_schema": {
             "type": "object",
@@ -677,7 +678,7 @@ TOOLS = [
                             "amount": {"type": "number", "description": "Positive=debit, negative=credit"},
                             "date": {"type": "string", "description": "YYYY-MM-DD"},
                             "description": {"type": "string"},
-                            "supplier_id": {"type": "integer", "description": "Required when posting to accounts payable (account 2400)"},
+                            "supplier_id": {"type": "integer", "description": "REQUIRED on the account-2400 posting. Omitting it causes 422."},
                             "customer_id": {"type": "integer"},
                             "employee_id": {"type": "integer"},
                             "project_id": {"type": "integer"},
