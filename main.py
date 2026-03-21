@@ -12,7 +12,17 @@ from fastapi.responses import JSONResponse
 from agent import run_agent
 from tripletex_client import TripletexClient
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
+_fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s — %(message)s")
+_root = logging.getLogger()
+_root.setLevel(logging.INFO)
+# Stderr (terminal / Cloud Run)
+_sh = logging.StreamHandler()
+_sh.setFormatter(_fmt)
+_root.addHandler(_sh)
+# File (dev_test.sh log parsing — harmless on Cloud Run, /tmp is always writable)
+_fh = logging.FileHandler("/tmp/agent_server.log", mode="a")
+_fh.setFormatter(_fmt)
+_root.addHandler(_fh)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Tripletex Accounting Agent")

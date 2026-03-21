@@ -129,6 +129,65 @@ test_enable_module() {
     "Enable the department accounting module in Tripletex"
 }
 
+test_update_employee() {
+  run "update_employee" \
+    "Update employee Kari Hansen: change her phone number to 99887766 and set her title to Senior Consultant"
+}
+
+test_update_customer() {
+  run "update_customer" \
+    "Update customer Bergström AS: set their email to faktura@bergstrom.no and phone to 22334455"
+}
+
+# ── Voucher / Ledger ──────────────────────────────────────────────────────────
+
+test_voucher_supplier() {
+  run "voucher_supplier" \
+    "Book a supplier invoice from Bergström AS for consulting services of 20000 NOK. Debit an appropriate cost account (fremmedytelse/konsulent, 6000-series) and credit accounts payable (2400). Use today as the voucher date."
+}
+
+test_voucher_correction() {
+  run "voucher_correction" \
+    "Reverse the most recent ledger voucher that was created this month."
+}
+
+# ── Complex / multi-step ─────────────────────────────────────────────────────
+
+test_employee_with_employment() {
+  run "employee_with_employment" \
+    "Onboard a new employee: Ingrid Larsen, email ingrid.larsen@example.no, phone 90001234. She starts 2026-04-01 as a full-time permanent employee (100% FTE) with a monthly salary of 55000 NOK. Set employment type ORDINARY and working hours scheme NOT_SHIFT."
+}
+
+test_timesheet() {
+  run "timesheet" \
+    "Log 7.5 hours of work for employee Kari Hansen on project Nettsideprosjekt 2026 on 2026-04-02. Use an appropriate activity."
+}
+
+test_salary() {
+  run "salary" \
+    "Register the monthly salary for March 2026 for employee Kari Hansen. Her monthly base salary is 48000 NOK. Use the standard fixed-salary wage type."
+}
+
+test_travel_expense_full() {
+  run "travel_expense_full" \
+    "Create a travel expense for Kari Hansen: trip title 'Fagkonferanse Bergen', travel date 2026-04-10. Add mileage of 85 km. Add a cost item for hotel stay of 1200 NOK. Then deliver (submit) the travel expense."
+}
+
+test_project_lifecycle() {
+  run "project_lifecycle" \
+    "Full project lifecycle: 1) Create project 'Digitalisering 2026' for customer Bergström AS with budget 150000 NOK, start date 2026-04-01. 2) Add Kari Hansen as project participant. 3) Log 8 hours for Kari Hansen on the project today. 4) Create an order for Bergström AS for the project (150000 NOK) and invoice it."
+}
+
+test_create_supplier() {
+  run "create_supplier" \
+    "Create a new supplier called TechPartner AS with organisation number 912345678 and email leverandor@techpartner.no"
+}
+
+test_portuguese() {
+  run "portuguese" \
+    "Crie um novo cliente chamado Lisboa Consultores com email contato@lisboaconsultores.pt e telefone 21234567"
+}
+
 # ── Run target ────────────────────────────────────────────────────────────────
 
 TARGET="${1:-help}"
@@ -152,6 +211,17 @@ case "$TARGET" in
   german)                    test_german ;;
   spanish)                   test_spanish ;;
   enable_module)             test_enable_module ;;
+  update_employee)           test_update_employee ;;
+  update_customer)           test_update_customer ;;
+  voucher_supplier)          test_voucher_supplier ;;
+  voucher_correction)        test_voucher_correction ;;
+  employee_with_employment)  test_employee_with_employment ;;
+  timesheet)                 test_timesheet ;;
+  salary)                    test_salary ;;
+  travel_expense_full)       test_travel_expense_full ;;
+  project_lifecycle)         test_project_lifecycle ;;
+  create_supplier)           test_create_supplier ;;
+  portuguese)                test_portuguese ;;
   all)
     test_create_employee
     test_create_employee_admin
@@ -169,12 +239,22 @@ case "$TARGET" in
     test_norwegian_nynorsk
     test_german
     test_spanish
+    test_update_employee
+    test_update_customer
+    test_voucher_supplier
+    test_employee_with_employment
+    test_timesheet
+    test_salary
+    test_travel_expense_full
+    test_project_lifecycle
+    test_create_supplier
+    test_portuguese
     ;;
   help|*)
     echo ""
     echo "Usage: bash test_prompts.sh <test_name>"
     echo ""
-    echo "Available tests:"
+    echo "Available tests (Tier 1 — basic):"
     echo "  create_employee           Create a standard employee"
     echo "  create_employee_admin     Create an employee with admin role"
     echo "  create_customer           Create a business customer"
@@ -184,15 +264,33 @@ case "$TARGET" in
     echo "  create_invoice            Create an order + invoice"
     echo "  create_invoice_english    Same in English"
     echo "  register_payment          Register payment on an invoice"
+    echo "  create_supplier           Create a new supplier"
+    echo ""
+    echo "Available tests (Tier 2 — multi-step):"
     echo "  credit_note               Create a credit note"
     echo "  create_project            Create a project linked to customer"
     echo "  create_project_participant Project with participant"
     echo "  create_travel_expense     Travel expense with mileage"
     echo "  delete_travel_expense     Delete a travel expense"
+    echo "  update_employee           Update employee fields"
+    echo "  update_customer           Update customer fields"
+    echo "  employee_with_employment  Onboard employee with employment + salary"
+    echo "  timesheet                 Log hours on a project"
+    echo "  salary                    Register monthly salary transaction"
+    echo "  travel_expense_full       Travel expense with cost + mileage + deliver"
+    echo "  project_lifecycle         Full project lifecycle (create→time→invoice)"
+    echo ""
+    echo "Available tests (Tier 3 — corrections/ledger):"
+    echo "  voucher_supplier          Supplier invoice via voucher (AP posting)"
+    echo "  voucher_correction        Reverse a voucher"
+    echo "  enable_module             Enable accounting module"
+    echo ""
+    echo "Available tests (multilingual):"
     echo "  nynorsk                   Norwegian Nynorsk prompt"
     echo "  german                    German prompt"
     echo "  spanish                   Spanish prompt"
-    echo "  enable_module             Enable accounting module"
+    echo "  portuguese                Portuguese prompt"
+    echo ""
     echo "  all                       Run all tests in sequence"
     echo ""
     ;;

@@ -117,6 +117,9 @@ For giving an employee admin access within the **same company**: set `userType=E
 ### `get_company_info` uses whoAmI
 `GET /company` only supports PUT in the API spec. `get_company_info` calls `GET /token/session/>whoAmI` which returns `employeeId` and `companyId`. If you need the company's actual record, it then calls `GET /company/{companyId}`.
 
+### `create_voucher` with accounts payable requires `supplier_id`
+When a posting targets account 2400 (Leverandørgjeld / Accounts Payable), Tripletex requires a `supplier` on that posting. Pass `supplier_id` on the posting object — the tool maps it to `{"supplier": {"id": ...}}`. Omitting it causes 422 "Leverandør mangler."
+
 ### Invoice flow
 Use `invoice_order` (one PUT call) — not a two-step `create_invoice`. The system prompt explicitly tells Claude this.
 

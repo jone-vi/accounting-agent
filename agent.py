@@ -51,11 +51,15 @@ Do NOT wait for a separate turn before acting.
 - For company's own customer ID (needed for grant_entitlement_template): use get_company_info
 - For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type (search name='fastlønn'). Bonus/tillegg is a separate specification line. year and month come from the task — use the current month if not specified. count=1, rate=<monthly_amount> for monthly base salary. Do NOT use list_accounts or create_voucher for payroll — that is wrong.
 - For payment registration: if the task states the exact invoice amount, pass it directly. If the amount is unclear or only the product price (ex VAT) is known, call list_invoices first to get the exact outstanding amount field before calling register_payment.
-- For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry
+- For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry. The timesheet date must be >= the project's startDate — if project starts in the future, use the project startDate as the timesheet date.
+- For create_project: only set projectManager_id if you know the employee has project manager privileges. If unsure, omit it — otherwise API returns 422.
 - For employee onboarding with salary/hours: pass percentageOfFullTimeEquivalent, annualSalary, employmentType, remunerationType, workingHoursScheme directly to create_employment — it sets employment details automatically in one call. Use NOT_SHIFT (not NOT_SHIFT_WORK) for workingHoursScheme, MONTHLY_WAGE for remunerationType.
 - Always pass department_id, nationalIdentityNumber, and all other known fields directly to create_employee — do NOT use update_employee afterwards to add fields you already knew at creation time.
+- When creating an employee who will also get create_employment: ALWAYS include dateOfBirth in create_employee (use '1990-01-01' as placeholder if not given) — create_employment requires it and will 422 without it.
 - For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
 - For credit notes: always pass today's date ({today}) as the date parameter to create_credit_note
+- For voucher postings to accounts payable (account 2400): MUST include supplier_id on that posting, otherwise API returns 422 "Leverandør mangler"
+- For create_order: if you include orderLines in the create_order call, do NOT call add_order_line separately for those same lines
 
 ## Handling errors
 If a tool returns an error:
@@ -245,9 +249,15 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
                     payload["project"] = {"id": project_id}
                 result = client.create_travel_expense(payload)
 
+            case "list_travel_payment_types":
+                result = client.list_travel_payment_types(**tool_input)
+
             case "add_travel_cost":
                 expense_id = tool_input.pop("travel_expense_id")
+                payment_type_id = tool_input.pop("paymentType_id", None)
                 payload = {"travelExpense": {"id": expense_id}, **tool_input}
+                if payment_type_id:
+                    payload["paymentType"] = {"id": payment_type_id}
                 result = client.add_travel_cost(payload)
 
             case "add_mileage_allowance":
@@ -277,7 +287,7 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
                 for i, p in enumerate(postings_raw):
                     posting = {"row": i + 1, "date": p["date"], "amount": p["amount"]}
                     posting["account"] = {"id": p["account_id"]}
-                    for fk, fv in [("customer_id", "customer"), ("employee_id", "employee"), ("project_id", "project"), ("department_id", "department")]:
+                    for fk, fv in [("supplier_id", "supplier"), ("customer_id", "customer"), ("employee_id", "employee"), ("project_id", "project"), ("department_id", "department")]:
                         if fk in p:
                             posting[fv] = {"id": p[fk]}
                     if "description" in p:

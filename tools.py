@@ -68,7 +68,10 @@ TOOLS = [
         "description": (
             "Create an employment record for an employee. Required for formal employment setup. "
             "startDate is required. Also sets employment details (salary, percentage, hours) in one call. "
-            "Use percentageOfFullTimeEquivalent for part-time (e.g. 80 for 80%), annualSalary for yearly salary."
+            "Use percentageOfFullTimeEquivalent for part-time (e.g. 80 for 80%), annualSalary for yearly salary. "
+            "IMPORTANT: The employee must have dateOfBirth set before this call or the API returns 422 "
+            "'employee.dateOfBirth: Feltet må fylles ut'. If dateOfBirth was not set at create_employee time, "
+            "call update_employee first to add a placeholder (e.g. '1990-01-01')."
         ),
         "input_schema": {
             "type": "object",
@@ -273,7 +276,8 @@ TOOLS = [
             "Create an order for a customer. "
             "Use invoice_order afterwards to convert it to an invoice. "
             "customer_id is required. orderDate defaults to today if omitted. "
-            "Include orderLines with product details if known."
+            "Include orderLines with product details if known. "
+            "If you include orderLines here, do NOT call add_order_line separately for those same lines."
         ),
         "input_schema": {
             "type": "object",
@@ -425,7 +429,11 @@ TOOLS = [
         "description": (
             "Create a project. name is required. "
             "Link to a customer with customer_id. "
-            "Assign a project manager with projectManager_id (employee ID)."
+            "Assign a project manager with projectManager_id (employee ID). "
+            "IMPORTANT: projectManager must have project manager privileges in Tripletex — "
+            "if the employee does not have PM access the API returns 422 "
+            "'prosjektleder har ikke fått tilgang som prosjektleder'. "
+            "If unsure whether an employee has PM access, omit projectManager_id."
         ),
         "input_schema": {
             "type": "object",
@@ -494,13 +502,30 @@ TOOLS = [
         },
     },
     {
+        "name": "list_travel_payment_types",
+        "description": (
+            "List available payment types for travel expense cost lines. "
+            "Call this before add_travel_cost to find the paymentType_id. "
+            "Use showOnTravelExpenses=true to filter to types valid for travel expense reports."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "showOnTravelExpenses": {"type": "boolean"},
+                "showOnEmployeeExpenses": {"type": "boolean"},
+            },
+        },
+    },
+    {
         "name": "create_travel_expense",
         "description": (
             "Create a travel expense report header. "
             "employee_id and title are required. "
-            "After creating, add cost lines with add_travel_cost, "
-            "mileage with add_mileage_allowance, per diem with add_per_diem_compensation. "
-            "Departure/return dates go inside travelDetails, not at top level."
+            "IMPORTANT: always include travelDetails with at least departureFrom and destination — "
+            "omitting travelDetails may cause the report to be created as an employee expense "
+            "(ansattutlegg) instead of a travel expense (reiseregning), which blocks add_mileage_allowance. "
+            "After creating, add cost lines with add_travel_cost (requires paymentType_id), "
+            "mileage with add_mileage_allowance, per diem with add_per_diem_compensation."
         ),
         "input_schema": {
             "type": "object",
@@ -511,12 +536,12 @@ TOOLS = [
                 "project_id": {"type": "integer", "description": "Link to project (optional)"},
                 "travelDetails": {
                     "type": "object",
-                    "description": "Optional travel details sub-object.",
+                    "description": "Travel details — always include departureFrom and destination.",
                     "properties": {
                         "departureDate": {"type": "string", "description": "YYYY-MM-DD"},
                         "returnDate": {"type": "string", "description": "YYYY-MM-DD"},
-                        "departureFrom": {"type": "string"},
-                        "destination": {"type": "string"},
+                        "departureFrom": {"type": "string", "description": "Where the trip started"},
+                        "destination": {"type": "string", "description": "Where the trip went"},
                         "isForeignTravel": {"type": "boolean"},
                         "isDayTrip": {"type": "boolean"},
                         "purpose": {"type": "string"},
@@ -528,16 +553,21 @@ TOOLS = [
     },
     {
         "name": "add_travel_cost",
-        "description": "Add a cost line (receipt/expense) to a travel expense report.",
+        "description": (
+            "Add a cost line (receipt/expense) to a travel expense report. "
+            "paymentType_id is REQUIRED — call list_travel_payment_types first to get valid IDs. "
+            "Use showOnTravelExpenses=true when listing to filter to applicable types."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "travel_expense_id": {"type": "integer"},
+                "paymentType_id": {"type": "integer", "description": "Required. Get ID from list_travel_payment_types."},
                 "amountCurrencyIncVat": {"type": "number", "description": "Amount including VAT"},
                 "comments": {"type": "string", "description": "Description of the cost"},
                 "category": {"type": "string", "description": "Cost category description"},
             },
-            "required": ["travel_expense_id", "amountCurrencyIncVat"],
+            "required": ["travel_expense_id", "paymentType_id", "amountCurrencyIncVat"],
         },
     },
     {
@@ -548,12 +578,12 @@ TOOLS = [
             "properties": {
                 "travel_expense_id": {"type": "integer"},
                 "date": {"type": "string", "description": "YYYY-MM-DD"},
-                "departureLocation": {"type": "string"},
-                "destination": {"type": "string"},
+                "departureLocation": {"type": "string", "description": "Required. Where the trip started."},
+                "destination": {"type": "string", "description": "Required. Where the trip ended."},
                 "km": {"type": "number", "description": "Distance in kilometres"},
                 "isCompanyCar": {"type": "boolean", "description": "Company car? Default false."},
             },
-            "required": ["travel_expense_id", "date", "km"],
+            "required": ["travel_expense_id", "date", "km", "departureLocation", "destination"],
         },
     },
     {
@@ -614,7 +644,9 @@ TOOLS = [
         "description": (
             "Create a manual ledger voucher (journal entry). "
             "date and postings are required. Each posting needs account (id), "
-            "amount (positive=debit, negative=credit), and date."
+            "amount (positive=debit, negative=credit), and date. "
+            "IMPORTANT: when posting to accounts payable (account 2400 / Leverandørgjeld), "
+            "you MUST include supplier_id on that posting or the API returns 422 'Leverandør mangler'."
         ),
         "input_schema": {
             "type": "object",
@@ -631,6 +663,7 @@ TOOLS = [
                             "amount": {"type": "number", "description": "Positive=debit, negative=credit"},
                             "date": {"type": "string", "description": "YYYY-MM-DD"},
                             "description": {"type": "string"},
+                            "supplier_id": {"type": "integer", "description": "Required when posting to accounts payable (account 2400)"},
                             "customer_id": {"type": "integer"},
                             "employee_id": {"type": "integer"},
                             "project_id": {"type": "integer"},
@@ -797,7 +830,11 @@ TOOLS = [
         "description": (
             "Log hours for an employee on a project/activity (timesheet). "
             "employee_id, activity_id, date, and hours are required. "
-            "Use list_activities to find activity_id first."
+            "Use list_activities to find activity_id first. "
+            "IMPORTANT: date must be on or after the project's startDate — "
+            "logging hours before the project start date returns 422 "
+            "'Det kan ikke registreres timer før startdatoen'. "
+            "If the project start date is in the future, use the project's start date as the timesheet entry date."
         ),
         "input_schema": {
             "type": "object",

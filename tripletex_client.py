@@ -210,6 +210,10 @@ class TripletexClient:
         data = self.get("/travelExpense", params={"fields": "id,title,employee,date,state", **params})
         return data.get("values", [])
 
+    def list_travel_payment_types(self, **params) -> list[dict]:
+        data = self.get("/travelExpense/paymentType", params={"fields": "id,description,showOnTravelExpenses,showOnEmployeeExpenses,isInactive", **params})
+        return data.get("values", [])
+
     def create_travel_expense(self, payload: dict) -> dict:
         return self.post("/travelExpense", payload)["value"]
 
