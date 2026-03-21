@@ -74,6 +74,24 @@ TOOLS = [
                 "startDate": {"type": "string", "description": "YYYY-MM-DD, required"},
                 "endDate": {"type": "string", "description": "YYYY-MM-DD, leave empty for ongoing"},
                 "isMainEmployer": {"type": "boolean", "description": "Default true"},
+                "employmentType": {
+                    "type": "string",
+                    "enum": ["ORDINARY", "MARITIME", "FREELANCE"],
+                    "description": "Default: ORDINARY",
+                },
+                "remunerationType": {
+                    "type": "string",
+                    "enum": ["MONTHLY_WAGE", "HOURLY_WAGE", "PAID_ON_COMMISSION", "FEE_EARNED", "BOARD_MEMBERS_FEE"],
+                    "description": "Default: MONTHLY_WAGE",
+                },
+                "weeklyWorkingHours": {"type": "number", "description": "e.g. 37.5 for full-time"},
+                "workingHoursScheme": {
+                    "type": "string",
+                    "enum": ["NOT_SHIFT_WORK", "ROUND_THE_CLOCK", "SHIFT_WORK_256_HOURS", "OFFSHORE_336_HOURS", "CONTINUOUS_SHIPWATCH", "OTHER_SHIFT_WORK"],
+                    "description": "Default: NOT_SHIFT_WORK",
+                },
+                "jobTitle": {"type": "string", "description": "Employee's job title"},
+                "employmentPercentage": {"type": "number", "description": "Work percentage, e.g. 100 for full-time"},
             },
             "required": ["employee_id", "startDate"],
         },
@@ -265,9 +283,8 @@ TOOLS = [
         "name": "invoice_order",
         "description": (
             "Convert an order to an invoice in one step. "
-            "Preferred over create_invoice — fewer API calls. "
             "invoiceDate is required (YYYY-MM-DD). "
-            "Set sendToCustomer=true to also send the invoice by email."
+            "To send the invoice after creation, call send_invoice separately."
         ),
         "input_schema": {
             "type": "object",
@@ -762,8 +779,9 @@ TOOLS = [
     {
         "name": "get_company_info",
         "description": (
-            "Get current user and company info: employeeId, companyId. "
-            "Use to find the company's customer ID for grant_entitlement_template (client access)."
+            "Get current company info including customerId, id, name, and organizationNumber. "
+            "customerId is the value needed for grant_entitlement_template (client access). "
+            "Use this only when you need the customerId — it costs 2 API calls."
         ),
         "input_schema": {"type": "object", "properties": {}},
     },
@@ -783,6 +801,23 @@ TOOLS = [
                 },
             },
             "required": ["module_name"],
+        },
+    },
+    {
+        "name": "record_session_note",
+        "description": (
+            "Record a factual note for use in future tasks within this session (same sandbox). "
+            "Use ONLY for specific, verified facts — entity IDs, salary type mappings, etc. "
+            "Format: 'salary type fastlonn has id=100' or 'department Salg has id=42'. "
+            "Do NOT record guesses or task-specific context (amounts, dates). "
+            "Call ONLY after the primary task is complete."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "note": {"type": "string", "description": "Short factual note, e.g. 'salary type fastlonn has id=100'"},
+            },
+            "required": ["note"],
         },
     },
 ]

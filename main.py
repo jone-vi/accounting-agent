@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Tripletex Accounting Agent")
 
+# In-process session memory keyed by Tripletex base_url (sandbox-scoped)
+SESSION_MEMORY: dict[str, list[str]] = {}
+
 
 @app.post("/")
 @app.post("/solve")
@@ -56,8 +59,10 @@ async def solve(request: Request):
 
     client = TripletexClient(base_url=base_url, session_token=session_token)
 
+    notes = SESSION_MEMORY.setdefault(base_url, [])
+
     try:
-        await asyncio.to_thread(run_agent, prompt=prompt, tripletex_client=client, file_contents=file_contents)
+        await asyncio.to_thread(run_agent, prompt=prompt, tripletex_client=client, file_contents=file_contents, session_notes=notes)
     except httpx.HTTPStatusError as e:
         logger.error("HTTP error during task: %s — %s", e.response.status_code, e.response.text)
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=200)

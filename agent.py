@@ -22,11 +22,23 @@ You receive task descriptions in one of 7 languages (Norwegian, English, Spanish
 Always understand the task regardless of language.
 
 ## Your approach
-1. Read the task carefully and identify exactly what needs to be done
-2. Plan the minimal sequence of API calls required — think before acting
-3. Execute the plan precisely using the available tools
-4. Each tool call should be purposeful — no exploratory or redundant calls
-5. If you create something, you know its ID from the response — don't re-fetch it
+Before making ANY API calls, output a short pre-flight analysis as plain text
+in your first response. This costs nothing — it is in the same response turn as
+your first tool calls. Format:
+
+ENTITIES: [named entities from the task that need IDs — customer, employee, product…]
+GIVEN:    [IDs or concrete values already stated in the task text]
+LOOKUP:   [entities that need a list_X call to get their ID]
+CREATE:   [entities that need to be created]
+SEQUENCE: [ordered steps; mark parallel steps with | e.g. "1. list_customers | list_products → 2. create_order → 3. invoice_order"]
+
+Then immediately issue your first tool calls in the same response.
+Do NOT wait for a separate turn before acting.
+
+4. When multiple independent lookups are needed, call both tools in the same
+   response turn as the analysis. Do not wait for one before calling the other.
+5. Each tool call should be purposeful — no exploratory or redundant calls.
+6. If you create something, its ID is in the response — don't re-fetch it.
 
 ## Key rules
 - Minimise API calls — every unnecessary call reduces your score
@@ -37,7 +49,7 @@ Always understand the task regardless of language.
 - For employee admin roles: set userType=EXTENDED when creating, then use grant_entitlements_by_template with ALL_PRIVILEGES
 - grant_entitlement_template is for giving employees access to a CLIENT company (accountant firms) — rarely needed
 - For company's own customer ID (needed for grant_entitlement_template): use get_company_info
-- For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type. Bonus/tillegg is a separate specification line.
+- For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type (search name='fastlønn'). Bonus/tillegg is a separate specification line. year and month come from the task — use the current month if not specified. count=1, rate=<monthly_amount> for monthly base salary.
 - For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry
 - For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
 
@@ -47,12 +59,28 @@ If a tool returns an error:
 - Fix that specific issue and retry once
 - Do NOT retry with the same parameters, and do NOT try unrelated workarounds
 - If the error persists after one corrected attempt, stop — do not loop
+- If invoice_order fails with "bankkontonummer": the order was created successfully. Report the order_id and that invoicing requires a bank account configured in Tripletex. Do NOT retry. Stop here — this is a partial success.
 
 ## Task completion
-When all required actions are done, stop. Do not add unnecessary verification calls."""
+When the required action succeeds, stop immediately:
+- Create/update tasks: done on 2xx response — the response IS the confirmation
+- Invoice tasks: done when invoice_order succeeds, OR when order is created and invoicing is blocked by a bank account error (report the order_id and stop)
+- Payment tasks: done when register_payment succeeds
+- Payroll tasks: done when create_salary_transaction succeeds
+NEVER call list_X or get_X after creating/updating just to confirm it worked.
+NEVER re-fetch an entity whose ID you already have from a prior response.
+
+## Session memory
+After completing a task, call record_session_note to save facts that will help
+future tasks skip redundant lookups:
+- Salary type IDs (e.g. "salary type 'fastlønn' has id=100")
+- Department IDs (e.g. "default department has id=42")
+- Frequently used customer/supplier IDs
+Only record confirmed facts from API responses — never guesses.
+Call record_session_note ONLY after the primary task is complete."""
 
 
-def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> str:
+def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, session_notes: list[str] | None = None) -> str:
     """Dispatch a tool call to the Tripletex client and return JSON result string."""
     try:
         match tool_name:
@@ -310,7 +338,7 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
 
             # ── Company / Modules ───────────────────────────────────────────
             case "get_company_info":
-                result = client.who_am_i()
+                result = client.get_company()
 
             case "grant_entitlements_by_template":
                 result = client.grant_entitlements_by_template(
@@ -322,6 +350,14 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
                 client.enable_module(tool_input["module_name"])
                 result = {"enabled": True, "module": tool_input["module_name"]}
 
+            case "record_session_note":
+                note = tool_input.get("note", "").strip()
+                if note and session_notes is not None:
+                    session_notes.append(note)
+                    result = {"recorded": True, "note": note, "total_notes": len(session_notes)}
+                else:
+                    result = {"recorded": False}
+
             case _:
                 return f"Error: Unknown tool '{tool_name}'"
 
@@ -332,7 +368,7 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict) -> s
         return f"Error: {e}"
 
 
-def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: list[dict]) -> None:
+def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: list[dict], session_notes: list[str] | None = None) -> None:
     """Run the agent loop until the task is complete."""
     claude = anthropic.Anthropic()
 
@@ -355,6 +391,14 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
 
     messages = [{"role": "user", "content": user_content}]
     system = SYSTEM_PROMPT.format(today=date.today().isoformat())
+
+    if session_notes:
+        notes_block = "\n".join(f"- {n}" for n in session_notes)
+        system += (
+            "\n\n## Session memory (facts from prior tasks in this sandbox)\n"
+            "These were recorded during earlier tasks. Trust them — do not re-fetch these IDs.\n"
+            + notes_block
+        )
 
     consecutive_errors = 0
 
@@ -384,7 +428,7 @@ def run_agent(prompt: str, tripletex_client: TripletexClient, file_contents: lis
             if block.type != "tool_use":
                 continue
             logger.info("Calling tool: %s(%s)", block.name, json.dumps(block.input)[:200])
-            result = execute_tool(tripletex_client, block.name, dict(block.input))
+            result = execute_tool(tripletex_client, block.name, dict(block.input), session_notes)
             logger.info("Result: %s", result[:300])
             if result.startswith("Error:"):
                 iteration_had_error = True
