@@ -685,6 +685,9 @@ TOOLS = [
                             "employee_id": {"type": "integer"},
                             "project_id": {"type": "integer"},
                             "department_id": {"type": "integer", "description": "Department to assign this posting to"},
+                            "dimension_value_id_1": {"type": "integer", "description": "ID of a free accounting dimension value for slot 1 (freeAccountingDimension1)"},
+                            "dimension_value_id_2": {"type": "integer", "description": "ID of a free accounting dimension value for slot 2 (freeAccountingDimension2)"},
+                            "dimension_value_id_3": {"type": "integer", "description": "ID of a free accounting dimension value for slot 3 (freeAccountingDimension3)"},
                         },
                         "required": ["account_id", "amount", "date"],
                     },
@@ -716,6 +719,61 @@ TOOLS = [
                 "numberTo": {"type": "integer", "description": "Filter accounts with number <= this value"},
                 "name": {"type": "string"},
             },
+        },
+    },
+
+    # ── Accounting Dimensions ──────────────────────────────────────────────
+    {
+        "name": "list_accounting_dimensions",
+        "description": "List free (user-defined) accounting dimensions (e.g. 'Prosjekttype'). Returns id, dimensionName, and dimensionIndex (1, 2, or 3).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "dimensionIndex": {"type": "integer", "description": "Filter by slot (1, 2, or 3)"},
+            },
+        },
+    },
+    {
+        "name": "create_accounting_dimension",
+        "description": (
+            "Create a new free (user-defined) accounting dimension (e.g. 'Prosjekttype'). "
+            "dimensionName and dimensionIndex are required. dimensionIndex must be 1, 2, or 3 — "
+            "call list_accounting_dimensions first to find an unused slot."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "dimensionName": {"type": "string", "description": "Name of the dimension (e.g. 'Prosjekttype')"},
+                "dimensionIndex": {"type": "integer", "description": "Slot: 1, 2, or 3"},
+                "description": {"type": "string"},
+            },
+            "required": ["dimensionName", "dimensionIndex"],
+        },
+    },
+    {
+        "name": "list_accounting_dimension_values",
+        "description": "List values for a free accounting dimension. Filter by dimensionIndex to get values for a specific dimension slot.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "dimensionIndex": {"type": "integer", "description": "Slot: 1, 2, or 3"},
+            },
+        },
+    },
+    {
+        "name": "create_accounting_dimension_value",
+        "description": (
+            "Create a value for a free accounting dimension (e.g. 'Internt', 'Utvikling'). "
+            "name and dimension_index are required. dimension_index must match the slot of the parent dimension."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Display name of the value (e.g. 'Internt')"},
+                "dimension_index": {"type": "integer", "description": "Slot of the parent dimension (1, 2, or 3)"},
+                "number": {"type": "string", "description": "Optional short code for the value"},
+            },
+            "required": ["name", "dimension_index"],
         },
     },
 

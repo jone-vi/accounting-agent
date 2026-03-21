@@ -302,6 +302,22 @@ class TripletexClient:
             accounts = [a for a in accounts if name_lower in (a.get("name") or "").lower()]
         return accounts
 
+    # ── Accounting Dimensions ─────────────────────────────────────────────────
+
+    def list_accounting_dimensions(self, **params) -> list[dict]:
+        data = self.get("/ledger/accountingDimensionName/search", params={"fields": "id,dimensionName,dimensionIndex,active", **params})
+        return data.get("values", [])
+
+    def create_accounting_dimension(self, payload: dict) -> dict:
+        return self.post("/ledger/accountingDimensionName", payload)["value"]
+
+    def list_accounting_dimension_values(self, **params) -> list[dict]:
+        data = self.get("/ledger/accountingDimensionValue/search", params={"fields": "id,displayName,number,dimensionIndex,active", **params})
+        return data.get("values", [])
+
+    def create_accounting_dimension_value(self, payload: dict) -> dict:
+        return self.post("/ledger/accountingDimensionValue", payload)["value"]
+
     # ── Salary / Payroll ──────────────────────────────────────────────────────
 
     def list_salary_types(self, **params) -> list[dict]:

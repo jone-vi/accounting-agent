@@ -328,6 +328,10 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
                     for fk, fv in [("supplier_id", "supplier"), ("customer_id", "customer"), ("employee_id", "employee"), ("project_id", "project"), ("department_id", "department")]:
                         if fk in p:
                             posting[fv] = {"id": p[fk]}
+                    for dk in ("dimension_value_id_1", "dimension_value_id_2", "dimension_value_id_3"):
+                        if dk in p:
+                            idx = dk[-1]
+                            posting[f"freeAccountingDimension{idx}"] = {"id": p[dk]}
                     if "description" in p:
                         posting["description"] = p["description"]
                     postings.append(posting)
@@ -339,6 +343,22 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
 
             case "list_accounts":
                 result = client.list_accounts(**tool_input)
+
+            case "list_accounting_dimensions":
+                result = client.list_accounting_dimensions(**tool_input)
+
+            case "create_accounting_dimension":
+                result = client.create_accounting_dimension(tool_input)
+
+            case "list_accounting_dimension_values":
+                result = client.list_accounting_dimension_values(**tool_input)
+
+            case "create_accounting_dimension_value":
+                dimension_index = tool_input.pop("dimension_index")
+                payload = {"dimensionIndex": dimension_index, **tool_input}
+                if "name" in payload:
+                    payload["displayName"] = payload.pop("name")
+                result = client.create_accounting_dimension_value(payload)
 
             # ── Salary / Payroll ────────────────────────────────────────────
             case "list_salary_types":
