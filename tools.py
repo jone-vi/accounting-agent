@@ -50,14 +50,23 @@ TOOLS = [
     },
     {
         "name": "update_employee",
-        "description": "Update fields on an existing employee (e.g. add email, phone, address).",
+        "description": (
+            "Update fields on an existing employee (e.g. add email, phone, address). "
+            "To change department, pass department_id as a flat integer — it is automatically "
+            "converted to the nested {\"department\": {\"id\": ...}} format the API requires. "
+            "Do NOT wrap department_id manually."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "employee_id": {"type": "integer"},
                 "fields": {
                     "type": "object",
-                    "description": "Key-value pairs to update, e.g. {\"email\": \"new@email.com\"}",
+                    "description": (
+                        "Key-value pairs to update. Examples: "
+                        "{\"email\": \"new@email.com\"}, {\"department_id\": 123}. "
+                        "Use department_id (integer) to change department."
+                    ),
                 },
             },
             "required": ["employee_id", "fields"],
@@ -730,7 +739,9 @@ TOOLS = [
             "Requires year, month, and at least one payslip with salary specifications. "
             "Each specification needs a salary_type_id (from list_salary_types), rate (amount per unit), "
             "and count (number of units, typically 1 for monthly salary). "
-            "Use for tasks like 'kjør lønn', 'exécutez la paie', 'run payroll', 'process salary'."
+            "Use for tasks like 'kjør lønn', 'exécutez la paie', 'run payroll', 'process salary'. "
+            "ERRORS: If you get 'Ansatt nr. er ikke registrert med et arbeidsforhold' the employee "
+            "has no employment record — call create_employment first. "
         ),
         "input_schema": {
             "type": "object",
@@ -861,18 +872,18 @@ TOOLS = [
     {
         "name": "get_company_info",
         "description": (
-            "Get current company info including customerId, id, name, and organizationNumber. "
-            "customerId is the value needed for grant_entitlement_template (client access). "
-            "Use this only when you need the customerId — it costs 2 API calls."
+            "Get current company info: id, name, organizationNumber. "
+            "Use this only when you need the company's own ID — it costs 2 API calls."
         ),
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "enable_module",
         "description": (
-            "Enable a Tripletex accounting module. "
-            "Common module names: 'moduleDepartment' (department accounting), "
-            "'moduleProject' (project accounting), 'moduleTravel' (travel expenses)."
+            "Activate a sales/addon module via POST /company/salesmodules. "
+            "The sandbox has all standard modules (salary, travel, project, department) "
+            "pre-enabled — do NOT call this unless another tool explicitly returned a "
+            "'module not enabled' error. Wrong usage wastes iterations."
         ),
         "input_schema": {
             "type": "object",

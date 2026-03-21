@@ -101,6 +101,12 @@ class TripletexClient:
         data = self.get("/employee/employment/occupationCode", params={"fields": "id,code,nameNO", **params})
         return data.get("values", [])
 
+    def _default_division_id(self) -> int | None:
+        """Return the first available division ID, or None if none exist."""
+        data = self.get("/division", params={"fields": "id,name"})
+        divisions = data.get("values", [])
+        return divisions[0]["id"] if divisions else None
+
     def create_employment(self, payload: dict) -> dict:
         # Fields that belong to EmploymentDetails, not Employment
         detail_field_names = {
@@ -110,6 +116,12 @@ class TripletexClient:
         }
         emp_payload = {k: v for k, v in payload.items() if k not in detail_field_names}
         detail_payload = {k: v for k, v in payload.items() if k in detail_field_names}
+
+        # division is required for salary transactions — auto-inject if not provided
+        if "division" not in emp_payload:
+            div_id = self._default_division_id()
+            if div_id:
+                emp_payload["division"] = {"id": div_id}
 
         employment = self.post("/employee/employment", emp_payload)["value"]
 
@@ -298,7 +310,7 @@ class TripletexClient:
     def get_company(self) -> dict:
         info = self.who_am_i()
         company_id = info.get("companyId") or info.get("company", {}).get("id")
-        return self.get(f"/company/{company_id}", params={"fields": "id,name,organizationNumber,customerId"})["value"]
+        return self.get(f"/company/{company_id}", params={"fields": "id,name,organizationNumber"})["value"]
 
     def grant_entitlements_by_template(self, employee_id: int, template: str) -> dict:
         return self.put(
@@ -306,10 +318,7 @@ class TripletexClient:
             params={"employeeId": employee_id, "template": template},
         )
 
-    def get_modules(self) -> dict:
-        return self.get("/company/modules", params={"fields": "*"})["value"]
-
-    def enable_module(self, module_name: str) -> None:
-        modules = self.get_modules()
-        modules[module_name] = True
-        self.put("/company/modules", modules)
+    def enable_module(self, module_name: str) -> dict:
+        # /company/modules does not exist in the Tripletex API.
+        # Sales/addon modules can be activated via POST /company/salesmodules.
+        return self.post("/company/salesmodules", {"module": module_name})

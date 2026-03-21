@@ -59,6 +59,8 @@ Do NOT wait for a separate turn before acting.
 - When creating an employee who will also get create_employment: ALWAYS include dateOfBirth in create_employee (use '1990-01-01' as placeholder if not given) — create_employment requires it and will 422 without it.
 - For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
 - For credit notes: always pass today's date ({today}) as the date parameter to create_credit_note
+- For update_employee with department change: pass department_id as a flat integer in the fields dict — it is auto-converted. Do NOT wrap it as {{"department": {{"id": ...}}}} yourself.
+- Do NOT call enable_module unless a prior tool call returned an explicit "module not enabled" error — all sandbox modules are pre-enabled. Calling it speculatively wastes iterations and returns errors.
 - For voucher postings to accounts payable (account 2400): MUST include supplier_id on that posting, otherwise API returns 422 "Leverandør mangler"
 - For create_order: if you include orderLines in the create_order call, do NOT call add_order_line separately for those same lines
 
@@ -122,6 +124,9 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
             case "update_employee":
                 employee_id = tool_input.pop("employee_id")
                 fields = tool_input.pop("fields")
+                # Transform flat foreign keys to nested objects expected by the API
+                if "department_id" in fields:
+                    fields["department"] = {"id": fields.pop("department_id")}
                 current = client.get_employee(employee_id)
                 current.update(fields)
                 updated = client.update_employee(employee_id, current)
