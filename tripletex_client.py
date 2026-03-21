@@ -170,9 +170,36 @@ class TripletexClient:
     def create_order(self, payload: dict) -> dict:
         return self.post("/order", payload)["value"]
 
+    def _ensure_bank_account(self) -> None:
+        """Register a bank account on account 1920 if none exists, so invoicing works."""
+        data = self.get("/ledger/account", params={"fields": "id,number,name,isBankAccount,bankAccountNumber"})
+        accounts = data.get("values", [])
+        # Already have a bank account configured — nothing to do
+        if any(a.get("isBankAccount") for a in accounts):
+            return
+        # Find account 1920 (Bankinnskudd) to activate as bank account
+        target = next((a for a in accounts if a.get("number") == 1920), None)
+        if not target:
+            target = next((a for a in accounts if 1900 <= (a.get("number") or 0) <= 1950), None)
+        if not target:
+            return
+        account_id = target["id"]
+        full = self.get(f"/ledger/account/{account_id}", params={"fields": "*"})["value"]
+        full["isBankAccount"] = True
+        full["bankAccountNumber"] = "12345678903"  # valid mod-11 Norwegian account number
+        self.put(f"/ledger/account/{account_id}", full)
+
     def invoice_order(self, order_id: int, params: dict) -> dict:
-        result = self.put(f"/order/{order_id}/:invoice", params=params)
-        return result.get("value", result)
+        try:
+            result = self.put(f"/order/{order_id}/:invoice", params=params)
+            return result.get("value", result)
+        except httpx.HTTPStatusError as e:
+            if "bankkonto" in e.response.text.lower():
+                logger.info("invoice_order: no bank account configured — auto-fixing account 1920 and retrying")
+                self._ensure_bank_account()
+                result = self.put(f"/order/{order_id}/:invoice", params=params)
+                return result.get("value", result)
+            raise
 
     def add_order_line(self, payload: dict) -> dict:
         return self.post("/order/orderline", payload)["value"]

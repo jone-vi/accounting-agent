@@ -70,7 +70,7 @@ If a tool returns an error:
 - Fix that specific issue and retry once
 - Do NOT retry with the same parameters, and do NOT try unrelated workarounds
 - If the error persists after one corrected attempt, stop — do not loop
-- If invoice_order fails with "bankkontonummer": the order was created successfully. Report the order_id and that invoicing requires a bank account configured in Tripletex. Do NOT retry. Stop here — this is a partial success.
+- If invoice_order fails with "bankkontonummer": this is handled automatically by the client — it will register a bank account and retry. You do not need to do anything.
 
 ## Task completion
 When the required action succeeds, stop immediately:
