@@ -72,7 +72,7 @@ Basic Auth: username `"0"`, password = `session_token`. Set per request, comes f
 
 ## Tool Coverage (43 tools)
 
-**Employees:** `list_employees`, `create_employee`, `update_employee`, `create_employment`, `grant_entitlements_by_template`, `grant_entitlement_template`
+**Employees:** `list_employees`, `create_employee`, `update_employee`, `create_employment`, `list_occupation_codes`, `grant_entitlements_by_template`, `grant_entitlement_template`
 
 **Customers:** `list_customers`, `create_customer`, `update_customer`
 

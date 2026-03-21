@@ -26,7 +26,7 @@ TOOLS = [
             "Create a new employee. "
             "userType is ALWAYS required. Use STANDARD for normal employees, "
             "EXTENDED for administrators/managers, NO_ACCESS if login not needed. "
-            "department is auto-filled if not provided."
+            "Pass department_id to assign the correct department — otherwise the default department is used."
         ),
         "input_schema": {
             "type": "object",
@@ -36,7 +36,9 @@ TOOLS = [
                 "email": {"type": "string"},
                 "phoneNumberMobile": {"type": "string"},
                 "dateOfBirth": {"type": "string", "description": "YYYY-MM-DD"},
+                "nationalIdentityNumber": {"type": "string", "description": "National ID / personnummer"},
                 "employeeNumber": {"type": "string"},
+                "department_id": {"type": "integer", "description": "Department ID to assign employee to"},
                 "userType": {
                     "type": "string",
                     "description": "Required. STANDARD=normal user, EXTENDED=admin/manager, NO_ACCESS=no login.",
@@ -99,8 +101,24 @@ TOOLS = [
                 "annualSalary": {"type": "number", "description": "Annual salary in NOK. Goes into EmploymentDetails."},
                 "monthlySalary": {"type": "number", "description": "Monthly salary in NOK. Goes into EmploymentDetails."},
                 "hourlyWage": {"type": "number", "description": "Hourly wage in NOK. Goes into EmploymentDetails."},
+                "occupationCode_id": {"type": "integer", "description": "Occupation code ID from list_occupation_codes. Goes into EmploymentDetails."},
             },
             "required": ["employee_id", "startDate"],
+        },
+    },
+    {
+        "name": "list_occupation_codes",
+        "description": (
+            "Search occupation/profession codes (STYRK-08) used in employment details. "
+            "Search by nameNO (Norwegian name) or code number. "
+            "Use when the task specifies an occupation code or job title that maps to a STYRK code."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "nameNO": {"type": "string", "description": "Norwegian occupation name (partial match)"},
+                "code": {"type": "string", "description": "STYRK-08 code number"},
+            },
         },
     },
     {

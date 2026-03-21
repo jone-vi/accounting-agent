@@ -12,7 +12,7 @@ from tripletex_client import TripletexClient
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-opus-4-6"
-MAX_TOKENS = 4096
+MAX_TOKENS = 8000
 MAX_ITERATIONS = 12  # Safety cap — prevents runaway loops
 MAX_CONSECUTIVE_ERRORS = 3  # Give up if this many tool calls in a row all fail
 
@@ -53,6 +53,7 @@ Do NOT wait for a separate turn before acting.
 - For payment registration: if the task states the exact invoice amount, pass it directly. If the amount is unclear or only the product price (ex VAT) is known, call list_invoices first to get the exact outstanding amount field before calling register_payment.
 - For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry
 - For employee onboarding with salary/hours: pass percentageOfFullTimeEquivalent, annualSalary, employmentType, remunerationType, workingHoursScheme directly to create_employment — it sets employment details automatically in one call. Use NOT_SHIFT (not NOT_SHIFT_WORK) for workingHoursScheme, MONTHLY_WAGE for remunerationType.
+- Always pass department_id, nationalIdentityNumber, and all other known fields directly to create_employee — do NOT use update_employee afterwards to add fields you already knew at creation time.
 - For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
 - For credit notes: always pass today's date ({today}) as the date parameter to create_credit_note
 
@@ -74,13 +75,12 @@ NEVER call list_X or get_X after creating/updating just to confirm it worked.
 NEVER re-fetch an entity whose ID you already have from a prior response.
 
 ## Session memory
-After completing a task, call record_session_note to save facts that will help
-future tasks skip redundant lookups:
+Call record_session_note in the SAME response turn as your last real tool call (not after).
+Save facts that help future tasks skip redundant lookups:
 - Salary type IDs (e.g. "salary type 'fastlønn' has id=100")
 - Department IDs (e.g. "default department has id=42")
-- Frequently used customer/supplier IDs
-Only record confirmed facts from API responses — never guesses.
-Call record_session_note ONLY after the primary task is complete."""
+- Frequently used customer/supplier/employee IDs
+Only record confirmed facts from API responses — never guesses."""
 
 
 def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, session_notes: list[str] | None = None) -> str:
@@ -93,6 +93,9 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
                 result = client.list_employees(**tool_input)
 
             case "create_employee":
+                dept_id = tool_input.pop("department_id", None)
+                if dept_id:
+                    tool_input["department"] = {"id": dept_id}
                 result = client.create_employee(tool_input)
 
             case "update_employee":
@@ -100,11 +103,18 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
                 fields = tool_input.pop("fields")
                 current = client.get_employee(employee_id)
                 current.update(fields)
-                result = client.update_employee(employee_id, current)
+                updated = client.update_employee(employee_id, current)
+                result = {"id": updated["id"], "version": updated["version"], "updated_fields": list(fields.keys())}
+
+            case "list_occupation_codes":
+                result = client.list_occupation_codes(**tool_input)
 
             case "create_employment":
                 employee_id = tool_input.pop("employee_id")
+                occ_id = tool_input.pop("occupationCode_id", None)
                 payload = {"employee": {"id": employee_id}, **tool_input}
+                if occ_id:
+                    payload["occupationCode"] = {"id": occ_id}
                 result = client.create_employment(payload)
 
             case "grant_entitlement_template":

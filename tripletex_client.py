@@ -97,12 +97,16 @@ class TripletexClient:
     def update_employee(self, employee_id: int, payload: dict) -> dict:
         return self.put(f"/employee/{employee_id}", payload)["value"]
 
+    def list_occupation_codes(self, **params) -> list[dict]:
+        data = self.get("/employee/employment/occupationCode", params={"fields": "id,code,nameNO", **params})
+        return data.get("values", [])
+
     def create_employment(self, payload: dict) -> dict:
         # Fields that belong to EmploymentDetails, not Employment
         detail_field_names = {
             "employmentType", "remunerationType", "workingHoursScheme",
             "percentageOfFullTimeEquivalent", "annualSalary", "hourlyWage",
-            "monthlySalary", "employmentForm",
+            "monthlySalary", "employmentForm", "occupationCode",
         }
         emp_payload = {k: v for k, v in payload.items() if k not in detail_field_names}
         detail_payload = {k: v for k, v in payload.items() if k in detail_field_names}
