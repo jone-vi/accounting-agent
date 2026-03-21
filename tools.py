@@ -65,7 +65,8 @@ TOOLS = [
         "name": "create_employment",
         "description": (
             "Create an employment record for an employee. Required for formal employment setup. "
-            "startDate is required."
+            "startDate is required. Also sets employment details (salary, percentage, hours) in one call. "
+            "Use percentageOfFullTimeEquivalent for part-time (e.g. 80 for 80%), annualSalary for yearly salary."
         ),
         "input_schema": {
             "type": "object",
@@ -76,22 +77,28 @@ TOOLS = [
                 "isMainEmployer": {"type": "boolean", "description": "Default true"},
                 "employmentType": {
                     "type": "string",
-                    "enum": ["ORDINARY", "MARITIME", "FREELANCE"],
-                    "description": "Default: ORDINARY",
+                    "enum": ["ORDINARY", "MARITIME", "FREELANCE", "NOT_CHOSEN"],
+                    "description": "Default: ORDINARY. Goes into EmploymentDetails.",
+                },
+                "employmentForm": {
+                    "type": "string",
+                    "enum": ["PERMANENT", "TEMPORARY", "PERMANENT_AND_HIRED_OUT", "TEMPORARY_AND_HIRED_OUT", "TEMPORARY_ON_CALL", "NOT_CHOSEN"],
+                    "description": "Default: PERMANENT. Goes into EmploymentDetails.",
                 },
                 "remunerationType": {
                     "type": "string",
-                    "enum": ["MONTHLY_WAGE", "HOURLY_WAGE", "PAID_ON_COMMISSION", "FEE_EARNED", "BOARD_MEMBERS_FEE"],
-                    "description": "Default: MONTHLY_WAGE",
+                    "enum": ["MONTHLY_WAGE", "HOURLY_WAGE", "COMMISION_PERCENTAGE", "FEE", "NOT_CHOSEN", "PIECEWORK_WAGE"],
+                    "description": "Default: MONTHLY_WAGE. Goes into EmploymentDetails.",
                 },
-                "weeklyWorkingHours": {"type": "number", "description": "e.g. 37.5 for full-time"},
                 "workingHoursScheme": {
                     "type": "string",
-                    "enum": ["NOT_SHIFT_WORK", "ROUND_THE_CLOCK", "SHIFT_WORK_256_HOURS", "OFFSHORE_336_HOURS", "CONTINUOUS_SHIPWATCH", "OTHER_SHIFT_WORK"],
-                    "description": "Default: NOT_SHIFT_WORK",
+                    "enum": ["NOT_SHIFT", "ROUND_THE_CLOCK", "SHIFT_365", "OFFSHORE_336", "CONTINUOUS", "OTHER_SHIFT", "NOT_CHOSEN"],
+                    "description": "Default: NOT_SHIFT. Goes into EmploymentDetails.",
                 },
-                "jobTitle": {"type": "string", "description": "Employee's job title"},
-                "employmentPercentage": {"type": "number", "description": "Work percentage, e.g. 100 for full-time"},
+                "percentageOfFullTimeEquivalent": {"type": "number", "description": "Work percentage, e.g. 100 for full-time, 80 for 80%. Goes into EmploymentDetails."},
+                "annualSalary": {"type": "number", "description": "Annual salary in NOK. Goes into EmploymentDetails."},
+                "monthlySalary": {"type": "number", "description": "Monthly salary in NOK. Goes into EmploymentDetails."},
+                "hourlyWage": {"type": "number", "description": "Hourly wage in NOK. Goes into EmploymentDetails."},
             },
             "required": ["employee_id", "startDate"],
         },
@@ -291,7 +298,7 @@ TOOLS = [
             "properties": {
                 "order_id": {"type": "integer"},
                 "invoiceDate": {"type": "string", "description": "YYYY-MM-DD, required"},
-                "sendToCustomer": {"type": "boolean", "description": "Send invoice by email. Default false."},
+                "sendToCustomer": {"type": "boolean", "description": "Send invoice to customer. API default is TRUE — pass false to suppress sending."},
                 "sendType": {
                     "type": "string",
                     "description": "Send method if sendToCustomer=true",
@@ -474,7 +481,8 @@ TOOLS = [
             "Create a travel expense report header. "
             "employee_id and title are required. "
             "After creating, add cost lines with add_travel_cost, "
-            "mileage with add_mileage_allowance, per diem with add_per_diem_compensation."
+            "mileage with add_mileage_allowance, per diem with add_per_diem_compensation. "
+            "Departure/return dates go inside travelDetails, not at top level."
         ),
         "input_schema": {
             "type": "object",
@@ -482,9 +490,20 @@ TOOLS = [
                 "employee_id": {"type": "integer"},
                 "title": {"type": "string", "description": "Required. Short description of the trip."},
                 "date": {"type": "string", "description": "YYYY-MM-DD, travel date"},
-                "departureDate": {"type": "string", "description": "YYYY-MM-DD"},
-                "returnDate": {"type": "string", "description": "YYYY-MM-DD"},
                 "project_id": {"type": "integer", "description": "Link to project (optional)"},
+                "travelDetails": {
+                    "type": "object",
+                    "description": "Optional travel details sub-object.",
+                    "properties": {
+                        "departureDate": {"type": "string", "description": "YYYY-MM-DD"},
+                        "returnDate": {"type": "string", "description": "YYYY-MM-DD"},
+                        "departureFrom": {"type": "string"},
+                        "destination": {"type": "string"},
+                        "isForeignTravel": {"type": "boolean"},
+                        "isDayTrip": {"type": "boolean"},
+                        "purpose": {"type": "string"},
+                    },
+                },
             },
             "required": ["employee_id", "title"],
         },

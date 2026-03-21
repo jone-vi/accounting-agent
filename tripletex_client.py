@@ -98,7 +98,24 @@ class TripletexClient:
         return self.put(f"/employee/{employee_id}", payload)["value"]
 
     def create_employment(self, payload: dict) -> dict:
-        return self.post("/employee/employment", payload)["value"]
+        # Fields that belong to EmploymentDetails, not Employment
+        detail_field_names = {
+            "employmentType", "remunerationType", "workingHoursScheme",
+            "percentageOfFullTimeEquivalent", "annualSalary", "hourlyWage",
+            "monthlySalary", "employmentForm",
+        }
+        emp_payload = {k: v for k, v in payload.items() if k not in detail_field_names}
+        detail_payload = {k: v for k, v in payload.items() if k in detail_field_names}
+
+        employment = self.post("/employee/employment", emp_payload)["value"]
+
+        if detail_payload:
+            detail_payload["employment"] = {"id": employment["id"]}
+            detail_payload.setdefault("date", emp_payload.get("startDate", employment["startDate"]))
+            details = self.post("/employee/employment/details", detail_payload)["value"]
+            employment["employmentDetails"] = [details]
+
+        return employment
 
     def grant_entitlement_template(self, employee_id: int, customer_id: int, template: str) -> dict:
         return self.put(

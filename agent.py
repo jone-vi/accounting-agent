@@ -52,6 +52,7 @@ Do NOT wait for a separate turn before acting.
 - For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type (search name='fastlønn'). Bonus/tillegg is a separate specification line. year and month come from the task — use the current month if not specified. count=1, rate=<monthly_amount> for monthly base salary. Do NOT use list_accounts or create_voucher for payroll — that is wrong.
 - For payment registration: if the task states the exact invoice amount, pass it directly. If the amount is unclear or only the product price (ex VAT) is known, call list_invoices first to get the exact outstanding amount field before calling register_payment.
 - For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry
+- For employee onboarding with salary/hours: pass percentageOfFullTimeEquivalent, annualSalary, employmentType, remunerationType, workingHoursScheme directly to create_employment — it sets employment details automatically in one call. Use NOT_SHIFT (not NOT_SHIFT_WORK) for workingHoursScheme, MONTHLY_WAGE for remunerationType.
 - For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
 - For credit notes: always pass today's date ({today}) as the date parameter to create_credit_note
 

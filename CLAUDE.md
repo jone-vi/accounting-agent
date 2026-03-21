@@ -100,6 +100,9 @@ Basic Auth: username `"0"`, password = `session_token`. Set per request, comes f
 
 ## Known Behaviours and Gotchas
 
+### `create_employment` also sets employment details in one call
+`create_employment` automatically posts to `/employee/employment/details` after creating the employment if any detail fields are provided. Pass `percentageOfFullTimeEquivalent`, `annualSalary`, `employmentType`, `remunerationType`, `workingHoursScheme` directly to `create_employment` — do **not** call a separate tool for employment details. Correct enum values: `workingHoursScheme` uses `NOT_SHIFT` (not `NOT_SHIFT_WORK`); `remunerationType` uses `COMMISION_PERCENTAGE` / `FEE` (not `PAID_ON_COMMISSION` / `FEE_EARNED`).
+
 ### Employee creation requires `userType`
 Always required. Valid values: `STANDARD`, `EXTENDED`, `NO_ACCESS`. The sandbox rejects with 422 "Brukertype kan ikke være '0' eller tom" if omitted.
 
