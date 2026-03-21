@@ -616,6 +616,7 @@ TOOLS = [
                             "customer_id": {"type": "integer"},
                             "employee_id": {"type": "integer"},
                             "project_id": {"type": "integer"},
+                            "department_id": {"type": "integer", "description": "Department to assign this posting to"},
                         },
                         "required": ["account_id", "amount", "date"],
                     },

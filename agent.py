@@ -267,7 +267,7 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
                 for i, p in enumerate(postings_raw):
                     posting = {"row": i + 1, "date": p["date"], "amount": p["amount"]}
                     posting["account"] = {"id": p["account_id"]}
-                    for fk, fv in [("customer_id", "customer"), ("employee_id", "employee"), ("project_id", "project")]:
+                    for fk, fv in [("customer_id", "customer"), ("employee_id", "employee"), ("project_id", "project"), ("department_id", "department")]:
                         if fk in p:
                             posting[fv] = {"id": p[fk]}
                     if "description" in p:
