@@ -52,6 +52,7 @@ Do NOT wait for a separate turn before acting.
 - For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type (search name='fastlønn'). Bonus/tillegg is a separate specification line. year and month come from the task — use the current month if not specified. count=1, rate=<monthly_amount> for monthly base salary. Do NOT use list_accounts or create_voucher for payroll — that is wrong.
 - For payment registration: if the task states the exact invoice amount, pass it directly. If the amount is unclear or only the product price (ex VAT) is known, call list_invoices first to get the exact outstanding amount field before calling register_payment.
 - For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry. The timesheet date must be >= the project's startDate — if project starts in the future, use the project startDate as the timesheet date.
+- For travel expenses: always include travelDetails (departureFrom + destination) in create_travel_expense. For add_mileage_allowance always pass rateCategory_id=120 (standard domestic car). For add_travel_cost always pass paymentType_id (call list_travel_payment_types first with showOnTravelExpenses=true).
 - For create_project: only set projectManager_id if you know the employee has project manager privileges. If unsure, omit it — otherwise API returns 422.
 - For employee onboarding with salary/hours: pass percentageOfFullTimeEquivalent, annualSalary, employmentType, remunerationType, workingHoursScheme directly to create_employment — it sets employment details automatically in one call. Use NOT_SHIFT (not NOT_SHIFT_WORK) for workingHoursScheme, MONTHLY_WAGE for remunerationType.
 - Always pass department_id, nationalIdentityNumber, and all other known fields directly to create_employee — do NOT use update_employee afterwards to add fields you already knew at creation time.
@@ -85,6 +86,22 @@ Save facts that help future tasks skip redundant lookups:
 - Department IDs (e.g. "default department has id=42")
 - Frequently used customer/supplier/employee IDs
 Only record confirmed facts from API responses — never guesses."""
+
+
+_MAX_LIST_ITEMS = 30  # Truncate list results longer than this to reduce context size
+
+
+def _truncate_result(result: str) -> str:
+    """Cap large JSON list results to avoid blowing up context with huge account/employee lists."""
+    try:
+        data = json.loads(result)
+        if isinstance(data, list) and len(data) > _MAX_LIST_ITEMS:
+            omitted = len(data) - _MAX_LIST_ITEMS
+            truncated = json.dumps(data[:_MAX_LIST_ITEMS], ensure_ascii=False, default=str)
+            return truncated[:-1] + f', {{"_truncated": "{omitted} more items omitted"}}]'
+    except Exception:
+        pass
+    return result
 
 
 def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, session_notes: list[str] | None = None) -> str:
@@ -262,7 +279,10 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
 
             case "add_mileage_allowance":
                 expense_id = tool_input.pop("travel_expense_id")
+                rate_category_id = tool_input.pop("rateCategory_id", None)
                 payload = {"travelExpense": {"id": expense_id}, **tool_input}
+                if rate_category_id:
+                    payload["rateCategory"] = {"id": rate_category_id}
                 result = client.add_mileage_allowance(payload)
 
             case "add_per_diem_compensation":
@@ -384,7 +404,7 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
             case _:
                 return f"Error: Unknown tool '{tool_name}'"
 
-        return json.dumps(result, ensure_ascii=False, default=str)
+        return _truncate_result(json.dumps(result, ensure_ascii=False, default=str))
 
     except Exception as e:
         logger.warning("Tool %s failed: %s", tool_name, e)

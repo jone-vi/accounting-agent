@@ -245,8 +245,19 @@ class TripletexClient:
         return self.put(f"/ledger/voucher/{voucher_id}/:reverse", params={"date": date})
 
     def list_accounts(self, **params) -> list[dict]:
+        number = params.pop("number", None)
+        number_from = params.pop("numberFrom", None)
+        number_to = params.pop("numberTo", None)
         data = self.get("/ledger/account", params={"fields": "id,number,name,type", **params})
-        return data.get("values", [])
+        accounts = data.get("values", [])
+        if number is not None:
+            accounts = [a for a in accounts if a.get("number") == number]
+        elif number_from is not None or number_to is not None:
+            if number_from is not None:
+                accounts = [a for a in accounts if a.get("number", 0) >= number_from]
+            if number_to is not None:
+                accounts = [a for a in accounts if a.get("number", 0) <= number_to]
+        return accounts
 
     # ── Salary / Payroll ──────────────────────────────────────────────────────
 

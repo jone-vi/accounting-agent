@@ -572,7 +572,11 @@ TOOLS = [
     },
     {
         "name": "add_mileage_allowance",
-        "description": "Add a mileage/driving allowance line to a travel expense report.",
+        "description": (
+            "Add a mileage/driving allowance line to a travel expense report. "
+            "rateCategory_id is REQUIRED for deliver to work — use 120 for standard domestic car (Bil inntil 9000 km). "
+            "Without it, deliver_travel_expense returns 422 'Sats eller satskategori må spesifiseres'."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -581,9 +585,10 @@ TOOLS = [
                 "departureLocation": {"type": "string", "description": "Required. Where the trip started."},
                 "destination": {"type": "string", "description": "Required. Where the trip ended."},
                 "km": {"type": "number", "description": "Distance in kilometres"},
+                "rateCategory_id": {"type": "integer", "description": "Required for delivery. Standard domestic car = 120."},
                 "isCompanyCar": {"type": "boolean", "description": "Company car? Default false."},
             },
-            "required": ["travel_expense_id", "date", "km", "departureLocation", "destination"],
+            "required": ["travel_expense_id", "date", "km", "departureLocation", "destination", "rateCategory_id"],
         },
     },
     {
@@ -690,11 +695,13 @@ TOOLS = [
     },
     {
         "name": "list_accounts",
-        "description": "List ledger accounts (chart of accounts). Use to find account IDs for voucher postings. Filter by number (exact match) or name.",
+        "description": "List ledger accounts (chart of accounts). Use to find account IDs for voucher postings. Pass 'number' for exact match, or 'numberFrom'/'numberTo' for a range.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "number": {"type": "integer", "description": "Account number (exact match)"},
+                "numberFrom": {"type": "integer", "description": "Filter accounts with number >= this value"},
+                "numberTo": {"type": "integer", "description": "Filter accounts with number <= this value"},
                 "name": {"type": "string"},
             },
         },

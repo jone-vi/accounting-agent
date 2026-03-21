@@ -170,7 +170,7 @@ test_salary() {
 
 test_travel_expense_full() {
   run "travel_expense_full" \
-    "Create a travel expense for Kari Hansen: trip title 'Fagkonferanse Bergen', travel date 2026-04-10. Add mileage of 85 km. Add a cost item for hotel stay of 1200 NOK. Then deliver (submit) the travel expense."
+    "Create a travel expense for Kari Hansen: trip title 'Fagkonferanse Bergen', travel date 2020-03-10. Add mileage of 85 km from home to Bergen. Add a cost item for hotel stay of 1200 NOK. Then deliver (submit) the travel expense."
 }
 
 test_project_lifecycle() {
