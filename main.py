@@ -48,13 +48,22 @@ async def solve(request: Request):
             media_type = "image/png"
         elif filename.endswith((".jpg", ".jpeg")):
             media_type = "image/jpeg"
+        elif filename.endswith(".webp"):
+            media_type = "image/webp"
+        elif filename.endswith(".gif"):
+            media_type = "image/gif"
         else:
             media_type = "application/octet-stream"
+
+        logger.info("Attached file: %s (%s, %d bytes)", filename, media_type, len(data_bytes))
+        if media_type == "application/octet-stream":
+            logger.warning("Unsupported file type for %s — will not be sent to model", filename)
+            continue
 
         file_contents.append({
             "filename": filename,
             "media_type": media_type,
-            "data": base64.b64encode(data_bytes).decode(),  # re-encode as base64 string for Claude
+            "data": base64.b64encode(data_bytes).decode(),
         })
 
     client = TripletexClient(base_url=base_url, session_token=session_token)
