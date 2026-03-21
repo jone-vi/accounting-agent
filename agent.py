@@ -49,9 +49,11 @@ Do NOT wait for a separate turn before acting.
 - For employee admin roles: set userType=EXTENDED when creating, then use grant_entitlements_by_template with ALL_PRIVILEGES
 - grant_entitlement_template is for giving employees access to a CLIENT company (accountant firms) — rarely needed
 - For company's own customer ID (needed for grant_entitlement_template): use get_company_info
-- For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type (search name='fastlønn'). Bonus/tillegg is a separate specification line. year and month come from the task — use the current month if not specified. count=1, rate=<monthly_amount> for monthly base salary.
+- For payroll/salary tasks: use list_salary_types to find the right wage code IDs first, then create_salary_transaction. Base salary is typically "fastlønn" or similar fixed monthly type (search name='fastlønn'). Bonus/tillegg is a separate specification line. year and month come from the task — use the current month if not specified. count=1, rate=<monthly_amount> for monthly base salary. Do NOT use list_accounts or create_voucher for payroll — that is wrong.
+- For payment registration: if the task states the exact invoice amount, pass it directly. If the amount is unclear or only the product price (ex VAT) is known, call list_invoices first to get the exact outstanding amount field before calling register_payment.
 - For timesheet/hours logging: use list_activities first to find activity_id, then create_timesheet_entry
 - For supplier tasks: use list_suppliers to check existence, create_supplier to create new ones
+- For credit notes: always pass today's date ({today}) as the date parameter to create_credit_note
 
 ## Handling errors
 If a tool returns an error:
@@ -182,8 +184,8 @@ def execute_tool(client: TripletexClient, tool_name: str, tool_input: dict, sess
 
             case "create_credit_note":
                 invoice_id = tool_input.pop("invoice_id")
-                date = tool_input.pop("date")
-                result = client.create_credit_note(invoice_id, date)
+                credit_date = tool_input.pop("date", None) or date.today().isoformat()
+                result = client.create_credit_note(invoice_id, credit_date)
 
             # ── Projects ────────────────────────────────────────────────────
             case "list_projects":
